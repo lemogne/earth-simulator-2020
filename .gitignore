@@ -1,0 +1,11 @@
+releases
+old
+__pycache__
+crashes/*
+worlds/*
+crashes/*
+screencaps/*
+*.pdn
+textures/minecraftalpha
+goals.txt
+setup.bat
