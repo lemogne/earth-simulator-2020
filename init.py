@@ -546,7 +546,7 @@ class Load_World:
 			Load_World.worlds = [x[:-4] for x in worlds]
 
 		except FileNotFoundError:
-			os.makedir("worlds")
+			os.mkdir("worlds")
 			Load_World.worlds = []
 			Load_World.default_buttons["Info"].set_text("Worlds save directory not found!")
 
@@ -1592,7 +1592,11 @@ def justify_text(tup):
 def screenshot():
 	buffer = glReadPixels(0, 0, *Display.size, GL_RGBA, GL_UNSIGNED_BYTE)
 	screen_surf = pg.image.fromstring(buffer, Display.size, "RGBA", True)
-	pg.image.save(screen_surf, f"{settings.screenshot_dir}/{int(time.time())}.png")
+	try:
+		pg.image.save(screen_surf, f"{settings.screenshot_dir}/{int(time.time())}.png")
+	except (pg.error, FileNotFoundError):
+		os.mkdir(settings.screenshot_dir)
+		pg.image.save(screen_surf, f"{settings.screenshot_dir}/{int(time.time())}.png")
 
 
 def init_pygame():
