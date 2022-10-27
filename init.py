@@ -1317,8 +1317,7 @@ class Display:
 		Display.centre = (Display.size[0] // 2, Display.size[1] // 2)
 
 		Display.screen = pg.display.set_mode(Display.size,
-		                                     (FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL | pg.RESIZABLE)
-
+		                                     (FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL | (pg.RESIZABLE * settings.resizeable))
 		glMatrixMode(GL_PROJECTION)
 		glLoadIdentity()
 		glMatrixMode(GL_MODELVIEW)
@@ -1391,6 +1390,7 @@ class Sky:
 		            (0, height, 0), (-size, -size / 3, -size), (size, -size / 3, size), (-size, -size / 3, size),
 		            (size, -size / 3, -size))
 		Sky.vert_list = np.array(vertices)[np.array(Sky.triangles).ravel()]
+		Sky.normals = np.zeros(len(Sky.vert_list))
 		Sky.tex_list = np.array([(0, Textures.sky_v), (0, Textures.sky_v), (0, Textures.sky_v + 0.01)] * 4 +
 		                        [(0, 1), (0, 1), (0, 0.99)] * 4 + [(0, 1), (0, Textures.sky_v), (0, 1), (0, 1),
 		                                                           (0, Textures.sky_v), (0, Textures.sky_v)] * 4)

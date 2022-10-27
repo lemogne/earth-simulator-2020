@@ -113,7 +113,7 @@ Game Time:\t{World.game_time}"""
 								settings.current_block = World.get_block(LookedAt)
 						elif event.button == 3:
 							World.set_block(get_looked_at()[1], settings.current_block)
-				elif event.type == pg.VIDEORESIZE:
+				elif event.type == pg.VIDEORESIZE and settings.resizeable:
 					Display.init((event.w, event.h))
 					Textures.update_pixel_size()
 				elif event.type == pg.KEYDOWN and not UI.buttons.is_typing():
