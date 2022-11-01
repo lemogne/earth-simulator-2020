@@ -362,11 +362,11 @@ class Save_World:
 
 			#Calculating bytes needed to save world data; saving that information to the file
 			BLblocks = bytesneeded(len(game_blocks))
-			BLpos = bytesneeded(settings.world_height * (settings.chunk_size**2))
+			BLpos = bytesneeded(World.height * (World.chunk_size**2))
 			BLch = bytesneeded(2**settings.world_size_F)
-			BLheight = bytesneeded(settings.world_height)
+			BLheight = bytesneeded(World.height)
 			savefile.write(np.array([BLblocks, BLpos, BLch, BLheight, 0], dtype=np.int8).tobytes())
-			savefile.write(np.array([settings.chunk_size, settings.world_height, 0]).tobytes())
+			savefile.write(np.array([World.chunk_size, World.height, 0]).tobytes())
 			savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
 			savefile.write(np.array(player.rot, dtype=np.float32).tobytes())
 
@@ -378,7 +378,7 @@ class Save_World:
 				counter = 1
 
 				#Block counting loop; compresses block data by making a list of (amount of blocks in a row, block ID); saves to file
-				for block in World.chunks[ch].reshape(settings.world_height * (settings.chunk_size**2)):
+				for block in World.chunks[ch].reshape(World.height * (World.chunk_size**2)):
 					if block == lastblock:
 						counter += 1
 					elif lastblock != None:
@@ -393,7 +393,7 @@ class Save_World:
 
 				#Saves light information
 				savefile.write(b"\x00\x00\x00\x00")
-				writeBits(World.light[ch].reshape(settings.chunk_size**2), BLheight)
+				writeBits(World.light[ch].reshape(World.chunk_size**2), BLheight)
 				savefile.write(b"\x00\x00\x00\x00")
 			savefile.write(b"\x00\x00\x00\x00\x00\x00")
 
@@ -473,10 +473,11 @@ class Load_World:
 			BLpos = data[11]
 			BLch = data[12]
 			BLheight = data[13]
-			settings.chunk_size = struct.unpack("i", data[15:19])[0]
+			World.chunk_size = struct.unpack("i", data[15:19])[0]
+			World.chunk_min_max = dict()
 
 			#World height, position and camera rotation are read here
-			settings.world_height = struct.unpack("i", data[19:23])[0]
+			World.height = struct.unpack("i", data[19:23])[0]
 			make_coord_array()
 			player.pos = Vector(struct.unpack("3f", data[27:39]))
 			rv = Vector(struct.unpack("3f", data[39:51]))
@@ -503,30 +504,30 @@ class Load_World:
 				try:
 					World.chunks[ch] = np.reshape(
 					    np.array(ChBuffer),
-					    (settings.chunk_size, settings.world_height, settings.chunk_size)).astype(np.uint8)
+					    (World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
 				except ValueError:
 					UI.buttons["Info"].set_text("World file corrupted!")
 					print("World file corrupted!")
 					return
 
-				for y in range(settings.world_height):
+				for y in range(World.height):
 					if seethrough[World.chunks[ch][:, y, :]].any():
-						World.chunk_min_max[ch] = (y / settings.chunk_size, 0)
+						World.chunk_min_max[ch] = (y / World.chunk_size, 0)
 						break
-				for y in range(settings.world_height-1, -1, -1):
+				for y in range(World.height-1, -1, -1):
 					if (World.chunks[ch][:, y, :] != 0).any():
 						chmin = World.chunk_min_max[ch][0]
-						World.chunk_min_max[ch] = (chmin, (y / settings.chunk_size) - chmin)
+						World.chunk_min_max[ch] = (chmin, (y / World.chunk_size) - chmin)
 						break
 
 				i += 4
 
 				#Reads lighting data
 				World.light[ch] = np.reshape(
-				    np.frombuffer(np.frombuffer(data[i:i + (settings.chunk_size**2) * BLheight],
+				    np.frombuffer(np.frombuffer(data[i:i + (World.chunk_size**2) * BLheight],
 				                                dtype=(f"V{BLheight}")).astype("V4"),
-				                  dtype=np.int32), (settings.chunk_size, settings.chunk_size))
-				i += (settings.chunk_size**2) * BLheight
+				                  dtype=np.int32), (World.chunk_size, World.chunk_size))
+				i += (World.chunk_size**2) * BLheight
 
 				#Check if chunk end flag is present; if not, the file must be corrupted
 				if data[i:i + 4] != b"\x00\x00\x00\x00":
@@ -967,7 +968,7 @@ class Player:
 				self.pos -= self.mv * (dt / segments)
 
 			#MOVEMENT
-			self.chunkpos = self.pos // settings.chunk_size
+			self.chunkpos = self.pos // World.chunk_size
 
 	def check_in_block(self, dim, dt, mv):
 		# TODO: optimise!!!
@@ -1031,6 +1032,8 @@ class World:
 	new = False
 	game_time = 0
 	thread_exception = None
+	height = settings.world_height
+	chunk_size = settings.chunk_size
 
 	def load_chunks(ForceLoad=False):
 		global chunk_coords, in_view, chunk_y_lims
@@ -1123,8 +1126,8 @@ class World:
 			# the remainder we turn into vertex and texture data
 			neighbours[i] = np.vstack(neighbours[i]).astype(int)
 			lnb = np.vstack(
-			    np.reshape(np.tile(neighbours_light[i], settings.world_height),
-			               (settings.chunk_size, settings.world_height, settings.chunk_size)))
+			    np.reshape(np.tile(neighbours_light[i], World.height),
+			               (World.chunk_size, World.height, World.chunk_size)))
 			nbWater = neighbours[i] == 8
 			nb_transp = seethrough[neighbours[i]]
 			bWater = blocks[nbWater]
@@ -1185,7 +1188,7 @@ class World:
 		if coords in World.chunks.keys():
 			return World.chunks[coords]
 		else:
-			return np.zeros((settings.chunk_size, settings.world_height, settings.chunk_size))
+			return np.zeros((World.chunk_size, World.height, World.chunk_size))
 
 	def chunk_in_view(chunk, y_lims):
 		leftV = Vector(-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
@@ -1209,7 +1212,7 @@ class World:
 				b = (i >> 1) & 1
 				c = i & 1
 				point = (Vector(chunk[:, 0] + a, y_lims[:,0] +  y_lims[:,1] * b, chunk[:, 1] + c) -
-				               ((player.pos + Vector(0, player.height, 0)) / settings.chunk_size))
+				               ((player.pos + Vector(0, player.height, 0)) / World.chunk_size))
 				all_inside |= point * plane < 0
 			inFrustum &= all_inside
 		return inFrustum
@@ -1218,15 +1221,15 @@ class World:
 		if coords in World.light.keys():
 			return World.light[coords]
 		else:
-			return np.zeros((settings.chunk_size, settings.chunk_size))
+			return np.zeros((World.chunk_size, World.chunk_size))
 
 	def get_block(coords):
 		if coords == None:
 			return None
-		if not settings.world_height > coords[1] > 0:
+		if not World.height > coords[1] > 0:
 			return 0
-		return World.chunk_data((coords[0] // settings.chunk_size, coords[2] // settings.chunk_size))[math.floor(
-		    coords[0] % settings.chunk_size)][math.floor(coords[1])][math.floor(coords[2] % settings.chunk_size)]
+		return World.chunk_data((coords[0] // World.chunk_size, coords[2] // World.chunk_size))[math.floor(
+		    coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(coords[2] % World.chunk_size)]
 
 	def update_chunk(ch):
 		if ch in World.loaded_chunks.keys():
@@ -1239,8 +1242,8 @@ class World:
 	def set_block(coords, block):
 		if coords == None:
 			return
-		chunk = (coords[0] // settings.chunk_size, coords[2] // settings.chunk_size)
-		if not chunk in World.chunks.keys() or coords[1] > settings.world_height:
+		chunk = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
+		if not chunk in World.chunks.keys() or coords[1] > World.height:
 			print("Cannot build outside world!")
 			return
 		if block >= len(game_blocks) or block < 0:
@@ -1248,24 +1251,24 @@ class World:
 			return
 		World.put_block(coords, block)
 		World.update_chunk(chunk)
-		if math.floor(coords[0] % settings.chunk_size) == 0:
+		if math.floor(coords[0] % World.chunk_size) == 0:
 			if (chunk[0] - 1, chunk[1]) in World.loaded_chunks.keys():
 				World.update_chunk((chunk[0] - 1, chunk[1]))
-		elif math.floor(coords[0] % settings.chunk_size) == settings.chunk_size - 1:
+		elif math.floor(coords[0] % World.chunk_size) == World.chunk_size - 1:
 			if (chunk[0] + 1, chunk[1]) in World.loaded_chunks.keys():
 				World.update_chunk((chunk[0] + 1, chunk[1]))
-		if math.floor(coords[2] % settings.chunk_size) == 0:
+		if math.floor(coords[2] % World.chunk_size) == 0:
 			if (chunk[0], chunk[1] - 1) in World.loaded_chunks.keys():
 				World.update_chunk((chunk[0], chunk[1] - 1))
-		elif math.floor(coords[2] % settings.chunk_size) == settings.chunk_size - 1:
+		elif math.floor(coords[2] % World.chunk_size) == World.chunk_size - 1:
 			if (chunk[0], chunk[1] + 1) in World.loaded_chunks.keys():
 				World.update_chunk((chunk[0], chunk[1] + 1))
 
 	def put_block(coords, block):
-		ch = (coords[0] // settings.chunk_size, coords[2] // settings.chunk_size)
+		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 
-		currentLight = math.floor(World.light[ch][math.floor(coords[0] % settings.chunk_size)][math.floor(
-		    coords[2] % settings.chunk_size)])
+		currentLight = math.floor(World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
+		    coords[2] % World.chunk_size)])
 		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == currentLight:
 			h = math.floor(coords[1]) - 1
 			while World.get_block((coords[0], h, coords[2])) == 0:
@@ -1273,21 +1276,21 @@ class World:
 					break
 				h -= 1
 			else:
-				World.light[ch][math.floor(coords[0] % settings.chunk_size)][math.floor(coords[2] %
-				                                                                        settings.chunk_size)] = h
+				World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
+				                                                                        World.chunk_size)] = h
 		elif block != 0 and coords[1] > currentLight:
-			World.light[ch][math.floor(coords[0] % settings.chunk_size)][math.floor(coords[2] %
-			                                                                        settings.chunk_size)] = coords[1]
-		World.chunks[ch][math.floor(coords[0] % settings.chunk_size)][math.floor(coords[1])][math.floor(
-		    coords[2] % settings.chunk_size)] = block
+			World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
+			                                                                        World.chunk_size)] = coords[1]
+		World.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
+		    coords[2] % World.chunk_size)] = block
 
 		# Update chunk min and max values
 		chmin, chmax = World.chunk_min_max[ch]
 		if block == 0:
-			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / settings.chunk_size)
+			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / World.chunk_size)
 			chmax_new = World.thorough_chmax(ch) if coords[1] == chmax else chmax
 		else:
-			chmax_new = max(chmin + chmax, math.floor(coords[1]) / settings.chunk_size) - chmin
+			chmax_new = max(chmin + chmax, math.floor(coords[1]) / World.chunk_size) - chmin
 			chmin_new = World.thorough_chmin(ch) if coords[1] == chmin else chmin
 		if World.chunk_min_max[ch] != (chmin_new, chmax_new):
 			player.old_chunkpos = None
@@ -1295,15 +1298,15 @@ class World:
 
 
 	def thorough_chmin(ch):
-		for y in range(settings.world_height):
+		for y in range(World.height):
 			if seethrough[World.chunks[ch][:, y, :]].any():
-				return y / settings.chunk_size
+				return y / World.chunk_size
 
 	def thorough_chmax(ch):
-		for y in range(settings.world_height-1, -1, -1):
+		for y in range(World.height-1, -1, -1):
 			if (World.chunks[ch][:, y, :] != 0).any():
 				chmin = World.chunk_min_max[ch][0]
-				return (y / settings.chunk_size) - chmin
+				return (y / World.chunk_size) - chmin
 
 coordArray = []
 
@@ -1311,11 +1314,11 @@ coordArray = []
 def make_coord_array():
 	global coordArray, coordArray3
 	coordArray = []
-	for i in range(settings.chunk_size):
+	for i in range(World.chunk_size):
 		coordArray.append([])
-		for j in range(settings.world_height):
+		for j in range(World.height):
 			coordArray[i].append([])
-			for k in range(settings.chunk_size):
+			for k in range(World.chunk_size):
 				coordArray[i][j].append((i, j, k))
 	coordArray3 = np.array(coordArray)
 	coordArray = np.vstack(coordArray)
@@ -1357,7 +1360,7 @@ class Display:
 		glMatrixMode(GL_MODELVIEW)
 		glLoadIdentity()
 		gluPerspective(settings.fovY, (Display.size[0] / Display.size[1]), 0.1,
-		               settings.render_distance * 3**0.5 * settings.chunk_size)
+		               settings.render_distance * 3**0.5 * World.chunk_size)
 		player.rot = Vector(0, 0, 0)
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 		glEnable(GL_BLEND)
@@ -1418,8 +1421,8 @@ class Sky:
 	             (6, 0, 2), (9, 0, 6), (9, 3, 0), (8, 1, 7), (8, 2, 1), (7, 3, 9), (7, 1, 3))
 
 	def init():
-		size = settings.render_distance * settings.chunk_size
-		height = settings.render_distance * 3**0.5 * settings.chunk_size
+		size = settings.render_distance * World.chunk_size
+		height = settings.render_distance * 3**0.5 * World.chunk_size
 		vertices = ((-size, size, -size), (size, size, size), (-size, size, size), (size, size, -size), (0, -height, 0),
 		            (0, height, 0), (-size, -size / 3, -size), (size, -size / 3, size), (-size, -size / 3, size),
 		            (size, -size / 3, -size))
