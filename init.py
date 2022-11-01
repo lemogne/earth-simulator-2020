@@ -494,7 +494,8 @@ class Load_World:
 
 				#reads blocks until chunk end flag is read
 				while data[i:i + 4] != b"\x00\x00\x00\x00":
-					ChBuffer += [int.from_bytes(data[i + BLpos:i + BLpos + BLblocks], "little")] * int.from_bytes(
+					block = int.from_bytes(data[i + BLpos:i + BLpos + BLblocks], "little")
+					ChBuffer += [block] * int.from_bytes(
 					    data[i:i + BLpos], "little")
 					i += BLpos + BLblocks
 
@@ -507,6 +508,16 @@ class Load_World:
 					UI.buttons["Info"].set_text("World file corrupted!")
 					print("World file corrupted!")
 					return
+				for y in range(settings.world_height):
+					if seethrough[World.chunks[ch][:, y, :]].any():
+						World.chunk_min_max[ch] = (y / settings.chunk_size, 0)
+						break
+				for y in range(settings.world_height-1, -1, -1):
+					if (World.chunks[ch][:, y, :] != 0).any():
+						chmin = World.chunk_min_max[ch][0]
+						World.chunk_min_max[ch] = (chmin, (y / settings.chunk_size) - chmin)
+						break
+
 				i += 4
 
 				#Reads lighting data
@@ -1014,26 +1025,28 @@ class World:
 	preloaded_data = {}
 	seed = 0
 	chunks = {}
+	chunk_min_max = {}
 	light = {}
 	new = False
 	game_time = 0
 	thread_exception = None
 
 	def load_chunks(ForceLoad=False):
-		global chunk_coords, in_view
+		global chunk_coords, in_view, chunk_y_lims
 		if player.old_chunkpos != player.chunkpos:
 			player.old_chunkpos = player.chunkpos
 			chunk_coords = np.array(list(World.chunks.keys()))
-			chDistance = settings.chunk_distance(abs(chunk_coords[:, 0] - player.chunkpos[0]),
+			chunk_distance = settings.chunk_distance(abs(chunk_coords[:, 0] - player.chunkpos[0]),
 			                                     abs(chunk_coords[:, 1] - player.chunkpos[2]))
-			chunk_coords = chunk_coords[chDistance <= settings.render_distance]
+			chunk_coords = chunk_coords[chunk_distance <= settings.render_distance]
+			chunk_y_lims = np.array(list(World.chunk_min_max.values()))[chunk_distance <= settings.render_distance]
 			player.old_rot = None
 		if ForceLoad:
 			in_view = np.full(shape=len(chunk_coords), fill_value=True)
 			player.old_rot = None
 		elif player.old_rot != player.rot:
 			player.old_rot = player.rot
-			in_view = World.chunk_in_view(chunk_coords)
+			in_view = World.chunk_in_view(chunk_coords, chunk_y_lims)
 
 		World.loaded_chunks = dict()
 		while len(World.preloaded_data) > 0:
@@ -1050,11 +1063,11 @@ class World:
 				World.loaded_chunks[ch] = World.preloaded_chunks[ch]
 
 	def render_chunk(chunkData):
-		glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])  #Sets VRAM pointer to Chunk memory location
-		glTexCoordPointer(2, GL_FLOAT, 32, (c_void_p)(12))  #Defines Texture Pointer behaviour
-		glVertexPointer(3, GL_FLOAT, 32, None)  #Defines Vertex Pointer behaviour
+		glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])
+		glTexCoordPointer(2, GL_FLOAT, 32, (c_void_p)(12))
+		glVertexPointer(3, GL_FLOAT, 32, None)
 		glNormalPointer(GL_FLOAT, 32, (c_void_p)(20))
-		glDrawArrays(GL_TRIANGLES, 0, chunkData[1])  #Draws Textures and Vertices to screen
+		glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
 
 	def load_chunk(chunkdata):
 		vert_tex_list = chunkdata[0][0]
@@ -1080,7 +1093,7 @@ class World:
 		blocks = np.vstack(chunk)
 		chunk_light = World.light[chunkpos]
 
-		#Shifts 3D block array by +/-1 in each direction to determine neighbour
+		# Shifts 3D block array by +/-1 in each direction to determine neighbour
 		neighbours = [
 		    np.dstack(((World.chunk_data((chunkpos[0], chunkpos[1] - 1))[:, :, -1:]), chunk[:, :, :-1])),
 		    np.dstack((chunk[:, :, 1:], (World.chunk_data((chunkpos[0], chunkpos[1] + 1))[:, :, 0:1]))),
@@ -1173,35 +1186,31 @@ class World:
 		else:
 			return np.zeros((settings.chunk_size, settings.world_height, settings.chunk_size))
 
-	def chunk_in_view(chunk):
+	def chunk_in_view(chunk, y_lims):
 		leftV = Vector(-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
-		               -player.norm[1],
+		               player.norm[1],
 		               -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2)))
 		rightV = Vector(settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
-		                -player.norm[1],
+		                player.norm[1],
 		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2)))
 		topV = Vector(player.norm[0],
-		              -settings.movement_speed * math.tan(math.radians(player.rot[0] + 90 + settings.fovY)),
+		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fovY))),
 		              player.norm[2])
 		bottomV = Vector(player.norm[0],
-		                 -settings.movement_speed * math.tan(math.radians(player.rot[0] - 90 - settings.fovY)),
+		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fovY))),
 		                 player.norm[2])
-		frustum = ((leftV, rightV), (topV, bottomV))
+		frustum = (leftV, rightV, topV, bottomV)
 		inFrustum = True
-		for pair in frustum:
-			all_above = True
-			all_below = True
+		for plane in frustum:
+			all_inside = False
 			for i in range(8):
 				a = i >> 2
 				b = (i >> 1) & 1
 				c = i & 1
-				all_above &= ((Vector(chunk[:, 0] + a, (
-				    (settings.world_height / settings.chunk_size) + settings.render_distance) * b, chunk[:, 1] + c) -
-				               (player.chunkpos + Vector(0.5, 0.5, 0.5))) * pair[0] > 0)
-				all_below &= ((Vector(chunk[:, 0] + a, (
-				    (settings.world_height / settings.chunk_size) + settings.render_distance) * b, chunk[:, 1] + c) -
-				               (player.chunkpos + Vector(0.5, 0.5, 0.5))) * pair[1] > 0)
-			inFrustum &= ~(all_above | all_below)
+				point = (Vector(chunk[:, 0] + a, y_lims[:,0] +  y_lims[:,1] * b, chunk[:, 1] + c) -
+				               ((player.pos + Vector(0, player.height, 0)) / settings.chunk_size))
+				all_inside |= point * plane < 0
+			inFrustum &= all_inside
 		return inFrustum
 
 	def light_data(coords):
