@@ -1419,15 +1419,12 @@ class Textures:
 class Sky:
 	triangles = ((2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5), (6, 8, 4), (9, 6, 4), (8, 7, 4), (7, 9, 4), (6, 2, 8),
 	             (6, 0, 2), (9, 0, 6), (9, 3, 0), (8, 1, 7), (8, 2, 1), (7, 3, 9), (7, 1, 3))
-
+	vertices = ((-1, 1, -1), (1, 1, 1), (-1, 1, 1), (1, 1, -1), (0, -1, 0),
+				(0, 1, 0), (-1, -1 / 3, -1), (1, -1 / 3, 1), (-1, -1 / 3, 1),
+				(1, -1 / 3, -1))
+	vert_list = np.array(vertices)[np.array(triangles).ravel()]
+	normals = np.zeros(len(vert_list))
 	def init():
-		size = settings.render_distance * World.chunk_size
-		height = settings.render_distance * 3**0.5 * World.chunk_size
-		vertices = ((-size, size, -size), (size, size, size), (-size, size, size), (size, size, -size), (0, -height, 0),
-		            (0, height, 0), (-size, -size / 3, -size), (size, -size / 3, size), (-size, -size / 3, size),
-		            (size, -size / 3, -size))
-		Sky.vert_list = np.array(vertices)[np.array(Sky.triangles).ravel()]
-		Sky.normals = np.zeros(len(Sky.vert_list))
 		Sky.tex_list = np.array([(0, Textures.sky_v), (0, Textures.sky_v), (0, Textures.sky_v + 0.01)] * 4 +
 		                        [(0, 1), (0, 1), (0, 0.99)] * 4 + [(0, 1), (0, Textures.sky_v), (0, 1), (0, 1),
 		                                                           (0, Textures.sky_v), (0, Textures.sky_v)] * 4)
