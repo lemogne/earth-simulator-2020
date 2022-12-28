@@ -34,11 +34,7 @@ def render(chat_string):
 	else:
 		glUseProgram(DayNightShader)
 	bright_loc = glGetUniformLocation(DayNightShader, "brightness")
-	#chunkpos_loc = glGetUniformLocation(DayNightShader, "chunkpos")
-	#chunksize_loc = glGetUniformLocation(DayNightShader, "chunk_size")
 	glUniform1f(bright_loc, (clamp(math.cos((World.game_time / 1024) * 2 * math.pi) * 2, -1, 1) + 1) / 2)
-	#glUniform1i(chunksize_loc, World.chunk_size)
-	#glUniform2i(chunkpos_loc, 0, 0)
 
 	World.load_chunks()
 
@@ -47,7 +43,7 @@ def render(chat_string):
 	
 	for loaded_chunk in World.loaded_chunks:
 		glPushMatrix()
-		glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1]*16)
+		glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1] * 16)
 		render_chunk(World.loaded_chunks[loaded_chunk][0])
 		glPopMatrix()
 
@@ -56,7 +52,7 @@ def render(chat_string):
 	for loaded_chunk in World.loaded_chunks:
 		if World.loaded_chunks[loaded_chunk][1] != None:
 			glPushMatrix()
-			glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1]*16)
+			glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1] * 16)
 			render_chunk(World.loaded_chunks[loaded_chunk][1])
 			glPopMatrix()
 	
