@@ -1406,7 +1406,7 @@ class Textures:
 		for block in blocks:
 			CS = np.tile(Cube.sides, (6, 1))
 			BR = np.repeat(np.array([np.array(block)[Face[len(block) - 1]], np.array([Textures.mapsize[1]] * 6)]).T, 6, 0)
-			TexArray.append((CS + BR) / Textures.mapsize)
+			TexArray.append(CS + BR)
 		return np.array(TexArray)
 
 class Sky:

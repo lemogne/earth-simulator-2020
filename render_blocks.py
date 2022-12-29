@@ -34,7 +34,9 @@ def render(chat_string):
 	else:
 		glUseProgram(DayNightShader)
 	bright_loc = glGetUniformLocation(DayNightShader, "brightness")
+	mapsize_loc = glGetUniformLocation(DayNightShader, "mapsize")
 	glUniform1f(bright_loc, (clamp(math.cos((World.game_time / 1024) * 2 * math.pi) * 2, -1, 1) + 1) / 2)
+	glUniform2f(mapsize_loc, *(Textures.mapsize))
 
 	World.load_chunks()
 

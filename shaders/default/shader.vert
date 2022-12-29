@@ -1,5 +1,6 @@
 #version 130
 uniform float brightness;
+uniform vec2 mapsize;
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
