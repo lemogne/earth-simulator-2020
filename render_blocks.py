@@ -12,9 +12,9 @@ def highlight_block(position):
 
 def render_chunk(chunkData):
 	glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])
-	glTexCoordPointer(2, GL_FLOAT, 32, (c_void_p)(12))
-	glVertexPointer(3, GL_FLOAT, 32, None)
-	glNormalPointer(GL_FLOAT, 32, (c_void_p)(20))
+	glTexCoordPointer(2, GL_BYTE, 8, (c_void_p)(3))
+	glVertexPointer(3, GL_BYTE, 8, None)
+	glNormalPointer(GL_BYTE, 8, (c_void_p)(5))
 	glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
 
 def render_sky(time_start):
