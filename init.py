@@ -13,7 +13,31 @@ from OpenGL.GL.shaders import *
 from ctypes import *
 import settings
 
-##Menu Options
+# Data Types
+BYTE = 0
+SHORT = 1
+INT = 2
+FLOAT = 3
+DOUBLE = 4
+
+types = [
+	(np.uint8, GL_BYTE, c_ubyte, 1, 127),
+	(np.uint16, GL_SHORT, c_ushort, 2, 32767),
+	(np.uint32, GL_INT, c_uint32, 4, 2147483647),
+	(np.float32, GL_FLOAT, c_float, 4, 1),
+	(np.float64, GL_DOUBLE, c_double, 8, 1)
+]
+
+if settings.gpu_data_type == None:
+	size = max(settings.chunk_size, settings.world_height)
+	if size <= 256:
+		settings.gpu_data_type = BYTE
+	elif size <= 32895:
+		settings.gpu_data_type = SHORT
+	else:
+		settings.gpu_data_type = INT
+
+# Menu Options
 
 
 def quit_game():
@@ -1072,7 +1096,7 @@ class World:
 		vbo = glGenBuffers(1) 
 		glBindBuffer(GL_ARRAY_BUFFER, vbo)
 		glBufferData(GL_ARRAY_BUFFER,
-		             len(vert_tex_list), (c_byte * len(vert_tex_list))(*vert_tex_list),
+		             len(vert_tex_list) * types[settings.gpu_data_type][3], (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list),
 		             GL_STATIC_DRAW)
 
 		if chunkdata[1] != None:
@@ -1081,7 +1105,7 @@ class World:
 			vbo_transp = glGenBuffers(1)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo_transp)
 			glBufferData(GL_ARRAY_BUFFER,
-			             len(vert_tex_list), (c_byte * len(vert_tex_list))(*vert_tex_list), GL_STATIC_DRAW)
+			             len(vert_tex_list) * types[settings.gpu_data_type][3], (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), GL_STATIC_DRAW)
 			return ((vbo, counter), (vbo_transp, counter_transp))
 		return ((vbo, counter), None)
 
@@ -1150,10 +1174,10 @@ class World:
 				cShowR = np.repeat(cShow, 6, 0)
 				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(cShow), 1))
 
-				verts.append(cShowR + cube_verts)
+				verts.append(cShowR + cube_verts - (128, 128, 128))
 				tex_verts.append(np.vstack(Textures.game_blocks[bShow, 6 * i:6 * i + 6]))
 				normals.append(
-				    np.tile(127 * Cube.normals[i], (6 * len(cShow), 1)) * np.tile(
+				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(cShow), 1)) * np.tile(
 				        np.repeat(((lShow <= cShow[:, 1]) + settings.shadow_brightness) /
 				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
 
@@ -1162,18 +1186,18 @@ class World:
 				cShowR = np.repeat(cShow_transp, 6, 0)
 				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(cShow_transp), 1))
 
-				transp_verts.append(cShowR + cube_verts)
+				transp_verts.append(cShowR + cube_verts - (128, 128, 128))
 				transp_tex_verts.append(np.vstack(Textures.game_blocks[bShow_transp, 6 * i:6 * i + 6]))
 				transp_normals.append(
-				    np.tile(127 * Cube.normals[i], (6 * len(cShow_transp), 1)) * np.tile(
+				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(cShow_transp), 1)) * np.tile(
 				        np.repeat(((lShow_transp <= cShow_transp[:, 1]) + settings.shadow_brightness) /
 				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
 
 				counter_transp += len(cShow_transp) * 6 
-		vert_tex_list = np.ravel(np.column_stack((np.vstack(verts), np.vstack(tex_verts), np.vstack(normals)))).astype(np.int8)
+		vert_tex_list = np.ravel(np.column_stack((np.vstack(verts), np.vstack(tex_verts), np.vstack(normals)))).astype(types[settings.gpu_data_type][0])
 		if counter_transp != 0:
 			vert_tex_transp = np.ravel(
-			    np.column_stack((np.vstack(transp_verts), np.vstack(transp_tex_verts), np.vstack(transp_normals)))).astype(np.int8)
+			    np.column_stack((np.vstack(transp_verts), np.vstack(transp_tex_verts), np.vstack(transp_normals)))).astype(types[settings.gpu_data_type][0])
 			return ((vert_tex_list, counter), (vert_tex_transp, counter_transp))
 		return ((vert_tex_list, counter), None)
 

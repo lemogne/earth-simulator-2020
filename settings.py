@@ -55,5 +55,6 @@ letter_offset = 0.65
 hitbox_epsilon = 0.00001
 text_align = True
 chunk_distance = lambda x, y: x + y	# Chunk distance norm
+gpu_data_type = 1
 
 screenshot_dir = "screencaps"
