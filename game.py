@@ -38,9 +38,10 @@ while 1:
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
 			render_sky(timeStart)
+			glPushMatrix()
 			glTranslatef(-temp_pos[0], -temp_pos[1] - player.height, -temp_pos[2])
 			render(chat_string)
-			glTranslatef(temp_pos[0], temp_pos[1] + player.height, temp_pos[2])
+			glPopMatrix()
 			pg.display.flip()
 			lastFrame = now
 			frames += 1
