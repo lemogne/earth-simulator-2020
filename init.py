@@ -456,6 +456,10 @@ class Load_World:
 	def run():
 		global player, game_blocks, make_coord_array
 		#Clear Chunk and Light arrays (dictionaries, whatever)
+		World.to_be_loaded = []
+		World.preloaded_chunks = {}
+		World.preloaded_data = {}
+		player.old_chunkpos = None
 		World.chunks = {}
 		World.light = {}
 		UI.buttons["Info"].set_text("Loading...")
