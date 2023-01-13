@@ -1399,21 +1399,21 @@ class Display:
 class Textures:
 
 	def init():
-		Textures.ui = load_textures("UI.png")
+		Textures.ui = Textures.load("UI.png")
 		if unicode:
 			try:
-				Textures.text = load_textures("unicodeL.png")
+				Textures.text = Textures.load("unicodeL.png")
 				Textures.texttable_height = 24
 			except (pg.error, FileNotFoundError):
-				Textures.text = load_textures("ascii.png")
+				Textures.text = Textures.load("ascii.png")
 				Textures.texttable_height = 16
 		else:
-			Textures.text = load_textures("ascii.png")
+			Textures.text = Textures.load("ascii.png")
 			Textures.texttable_height = 16
-		Textures.terrain = load_textures("textures.png")
-		Textures.logo = load_textures("logo.png")
-		Textures.title = load_textures("title.png")
-		Textures.cursor = load_textures("cursor.png")
+		Textures.terrain = Textures.load("textures.png")
+		Textures.logo = Textures.load("logo.png")
+		Textures.title = Textures.load("title.png")
+		Textures.cursor = Textures.load("cursor.png")
 
 		title_size = (Textures.title[1].get_width(), Textures.title[1].get_height())
 		Textures.text_ratio = Textures.text[1].get_width() * (Textures.texttable_height /
@@ -1444,6 +1444,22 @@ class Textures:
 			TexArray.append(CS + BR)
 		return np.array(TexArray)
 
+	def load(file):
+		textureSurface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
+		textureData = pg.image.tostring(textureSurface, "RGBA", 1)
+
+		glEnable(GL_TEXTURE_2D)
+		glEnableClientState(GL_VERTEX_ARRAY)
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+		texid = glGenTextures(1)
+		glBindTexture(GL_TEXTURE_2D, texid)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSurface.get_width(), textureSurface.get_height(), 0, GL_RGBA,
+					GL_UNSIGNED_BYTE, textureData)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+		return (texid, textureSurface)
 
 class Sky:
 	triangles = ((2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5), (6, 8, 4), (9, 6, 4), (8, 7, 4), (7, 9, 4), (6, 2, 8),
@@ -1548,24 +1564,6 @@ def rand(seed, dim):
 		nn = (nn * p2) % p1
 		op.append(nn / p1)
 	return np.resize(op, dim)
-
-
-def load_textures(file):
-	textureSurface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
-	textureData = pg.image.tostring(textureSurface, "RGBA", 1)
-
-	glEnable(GL_TEXTURE_2D)
-	glEnableClientState(GL_VERTEX_ARRAY)
-	glEnableClientState(GL_TEXTURE_COORD_ARRAY)
-	texid = glGenTextures(1)
-	glBindTexture(GL_TEXTURE_2D, texid)
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSurface.get_width(), textureSurface.get_height(), 0, GL_RGBA,
-	             GL_UNSIGNED_BYTE, textureData)
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-	return (texid, textureSurface)
 
 
 def mode_2D():
