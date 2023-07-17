@@ -277,7 +277,7 @@ class Button:
 		else:
 			self.box = Button_Box.vertices_long
 		self.input_mode = input_mode
-		#In-place operator overwrites the ButtonBox class because pointers
+		# In-place operator overwrites the ButtonBox class because pointers
 		self.box = self.box + np.array(position)
 		self.text = text
 		self.function = function
@@ -316,7 +316,7 @@ class Button:
 
 
 def leave_world():
-	#Unloads chunks and quits the world
+	# Unloads chunks and quits the world
 	for ch in World.preloaded_chunks:
 		glDeleteBuffers(1, int(World.preloaded_chunks[ch][0][0]))
 		if World.preloaded_chunks[ch][1] != None:
@@ -331,8 +331,8 @@ class Start_Game:
 
 	def run():
 		World.new = True
-		#Determining world seed:
-		#if field is empty, generate random seed; else, try to interpret seed as number. If not possible, display error.
+		# Determining world seed:
+		# if field is empty, generate random seed; else, try to interpret seed as number. If not possible, display error.
 		if UI.buttons["Seed"].get_text() == "":
 			World.seed = (time.time() % 1) * 2741
 		else:
@@ -375,12 +375,12 @@ class Save_World:
 		name = UI.buttons["Name"].get_text()
 		try:
 
-			savefile = open(f"worlds/{name}.esw", "wb")  #Create/overwrite world file as given by user input
-			savefile.write(b"ES20\x00v0.2\x00")  #Write file header containing game version
+			savefile = open(f"worlds/{name}.esw", "wb")  # Create/overwrite world file as given by user input
+			savefile.write(b"ES20\x00v0.2\x00")  # Write file header containing game version
 
 			writeBits = lambda data, bits: savefile.write(np.array(data).astype('V' + str(bits)).tobytes())
 
-			#Calculating bytes needed to save world data; saving that information to the file
+			# Calculating bytes needed to save world data; saving that information to the file
 			BLblocks = bytesneeded(len(game_blocks))
 			BLpos = bytesneeded(World.height * (World.chunk_size**2))
 			BLch = bytesneeded(2**settings.world_size_F)
@@ -390,14 +390,14 @@ class Save_World:
 			savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
 			savefile.write(np.array(player.rot, dtype=np.float32).tobytes())
 
-			#Save each chunk separately, in sequence
+			# Save each chunk separately, in sequence
 			for ch in World.chunks:
-				pg.event.get()  #To prevent game window from freezing
-				writeBits(ch, BLch)  #Writes the chunk coordinates to the file
+				pg.event.get()  # To prevent game window from freezing
+				writeBits(ch, BLch)  # Writes the chunk coordinates to the file
 				lastblock = None
 				counter = 1
 
-				#Block counting loop; compresses block data by making a list of (amount of blocks in a row, block ID); saves to file
+				# Block counting loop; compresses block data by making a list of (amount of blocks in a row, block ID); saves to file
 				for block in World.chunks[ch].reshape(World.height * (World.chunk_size**2)):
 					if block == lastblock:
 						counter += 1
@@ -411,13 +411,13 @@ class Save_World:
 				writeBits(counter, BLpos)
 				writeBits(lastblock, BLblocks)
 
-				#Saves light information
+				# Saves light information
 				savefile.write(b"\x00\x00\x00\x00")
 				writeBits(World.light[ch].reshape(World.chunk_size**2), BLheight)
 				savefile.write(b"\x00\x00\x00\x00")
 			savefile.write(b"\x00\x00\x00\x00\x00\x00")
 
-			#Saves important world global variables like the seed or the time
+			# Saves important world global variables like the seed or the time
 			savefile.write(np.array([World.seed, settings.tree_density], dtype=np.float32).tobytes())
 			savefile.write(np.array(World.game_time, dtype=np.int32).tobytes())
 			savefile.close()
@@ -450,7 +450,7 @@ class Load_World:
 
 	def run():
 		global player, game_blocks, make_coord_array
-		#Clear Chunk and Light arrays (dictionaries, whatever)
+		# Clear Chunk and Light arrays (dictionaries, whatever)
 		World.to_be_loaded = []
 		World.preloaded_chunks = {}
 		World.preloaded_data = {}
@@ -460,7 +460,7 @@ class Load_World:
 		UI.buttons["Info"].set_text("Loading...")
 		World.new = False
 
-		#Check if a world has been selected
+		# Check if a world has been selected
 		if Load_World.selected_world:
 			name = Load_World.selected_world
 		else:
@@ -468,7 +468,7 @@ class Load_World:
 			print("No world selected!")
 			return
 
-		#Check if world actually exists and open it
+		# Check if world actually exists and open it
 		try:
 			readfile = open(f"worlds/{name}.esw", "rb")
 		except FileNotFoundError:
@@ -477,11 +477,11 @@ class Load_World:
 			return
 
 		try:
-			#read data to variable
+			# read data to variable
 			data = readfile.read()
 			readfile.close()
 
-			#check if the file is actually a world, and if it is the right version
+			# check if the file is actually a world, and if it is the right version
 			if data[:4] != b"ES20":
 				UI.buttons["Info"].set_text("This file is not a world!")
 				print("This file is not a world!")
@@ -492,7 +492,7 @@ class Load_World:
 				print(UI.buttons["Info"].get_text())
 				return
 
-			#The world file contains the amount of bytes needed to write certain data (i.e. 1 byte to save a block ID); This data is read here
+			# The world file contains the amount of bytes needed to write certain data (i.e. 1 byte to save a block ID); This data is read here
 			BLblocks = data[10]
 			BLpos = data[11]
 			BLch = data[12]
@@ -500,13 +500,13 @@ class Load_World:
 			World.chunk_size = struct.unpack("i", data[15:19])[0]
 			World.chunk_min_max = dict()
 
-			#World height, position and camera rotation are read here
+			# World height, position and camera rotation are read here
 			World.height = struct.unpack("i", data[19:23])[0]
 			make_coord_array()
 			player.pos = Vector(struct.unpack("3f", data[27:39]))
 			rv = Vector(struct.unpack("3f", data[39:51]))
 
-			#Chunk reading loop (reads until end of block data flag is read)
+			# Chunk reading loop (reads until end of block data flag is read)
 			i = 51
 			while data[i:i + 6] != b"\x00\x00\x00\x00\x00\x00":
 				pg.event.get()  #prevents window from freezing
@@ -517,13 +517,13 @@ class Load_World:
 				                                                  signed=True))  #Chunk position
 				i += BLch * 2
 
-				#reads blocks until chunk end flag is read
+				# reads blocks until chunk end flag is read
 				while data[i:i + 4] != b"\x00\x00\x00\x00":
 					block = int.from_bytes(data[i + BLpos:i + BLpos + BLblocks], "little")
 					ChBuffer += [block] * int.from_bytes(data[i:i + BLpos], "little")
 					i += BLpos + BLblocks
 
-				#Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
+				# Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
 				try:
 					World.chunks[ch] = np.reshape(np.array(ChBuffer),
 					                              (World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
@@ -544,14 +544,14 @@ class Load_World:
 
 				i += 4
 
-				#Reads lighting data
+				# Reads lighting data
 				World.light[ch] = np.reshape(
 				    np.frombuffer(np.frombuffer(data[i:i + (World.chunk_size**2) * BLheight],
 				                                dtype=(f"V{BLheight}")).astype("V4"),
 				                  dtype=np.int32), (World.chunk_size, World.chunk_size))
 				i += (World.chunk_size**2) * BLheight
 
-				#Check if chunk end flag is present; if not, the file must be corrupted
+				# Check if chunk end flag is present; if not, the file must be corrupted
 				if data[i:i + 4] != b"\x00\x00\x00\x00":
 					UI.buttons["Info"].set_text("World file corrupted!")
 					print("World file corrupted!")
@@ -559,7 +559,7 @@ class Load_World:
 				i += 4
 			i += 6
 
-			#Read important world information
+			# Read important world information
 			World.seed = struct.unpack("f", data[i:i + 4])[0]
 			i += 4
 			settings.tree_density = struct.unpack("f", data[i:i + 4])[0]
@@ -756,7 +756,7 @@ menu_buttons = Interface({
 })
 
 
-#Vector class definition
+# Vector class definition
 class Vector:
 
 	def __init__(self, *tup):
@@ -907,10 +907,9 @@ class Vector:
 		return Vector(tuple(temp))
 
 
-###DATA
-
 
 class Cube:
+	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 1, 1), (1, 1, 0), (1, 0, 0), (1, 0, 1), (0, 1, 1), (0, 0, 0), (0, 0, 1), (0, 1, 0)))
 	edges = np.array(((0, 1), (0, 3), (0, 4), (1, 2), (1, 7), (2, 5), (2, 3), (3, 6), (4, 6), (4, 7), (5, 6), (5, 7)))
 	quads = np.array(((5, 7, 1, 2), (3, 0, 4, 6), (2, 1, 0, 3), (6, 4, 7, 5), (7, 4, 0, 1), (5, 2, 3, 6)))
@@ -920,13 +919,11 @@ class Cube:
 	normals = np.array(((0, 0, 1), (0, 0, -1), (-1, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 0)))
 
 
-#Faces: front, back, right, left, top, bottom
-
 
 class Player:
 	pos = Vector(0, 0, 0)
 	mv = Vector(0, 0, 0)
-	rot = Vector(0, 0, 0)  #pitch, yaw, roll
+	rot = Vector(0, 0, 0)  # pitch, yaw, roll
 	norm = Vector(0, 0, 0)
 	chunkpos = pos // settings.chunk_size
 	height = settings.player_height
@@ -943,7 +940,7 @@ class Player:
 		if not (UI.paused or UI.buttons.is_typing()):
 			self.old_pos = self.pos + (0, 0, 0)
 			block_under = World.get_block(self.pos - (0, 0.01, 0))
-			#Calculate movement vector based on key presses and environment
+			# Calculate movement vector based on key presses and environment
 			keystates = pg.key.get_pressed()
 			accel = Vector(0.0, 0.0, 0.0)
 			forward = (keystates[pg.K_w] - keystates[pg.K_s])
@@ -993,7 +990,7 @@ class Player:
 						self.mv[i] = 0
 				self.pos -= self.mv * (dt / segments)
 
-			#MOVEMENT
+			# MOVEMENT
 			self.chunkpos = self.pos // World.chunk_size
 
 	def check_in_block(self, dim, dt, mv):
@@ -1034,7 +1031,7 @@ class Player:
 			else:
 				rv = Vector(0, 0, 0)
 
-			#norm is the normal vector of the culling plane, also the 'forward' vector
+			# norm is the normal vector of the culling plane, also the 'forward' vector
 			self.norm = Vector(-settings.movement_speed * math.sin(math.radians(self.rot[1])),
 			                   -settings.movement_speed * math.tan(math.radians(self.rot[0])),
 			                   settings.movement_speed * math.cos(math.radians(self.rot[1])))
@@ -1159,7 +1156,7 @@ class World:
 			l_transp = lnb[nb_transp]
 
 			SMask = ~seethrough[b_transp]
-			bShow = b_transp[SMask]  #Solid blocks
+			bShow = b_transp[SMask]  # Solid blocks
 			cShow = c_transp[SMask]
 			lShow = l_transp[SMask]
 
@@ -1168,7 +1165,7 @@ class World:
 			bShow_transp = blocks[TMask1]
 			lShow_transp = lnb[TMask1]
 
-			#Water blocks, also air blocks bordering on water (so that you can see water surface from below)
+			# Water blocks, also air blocks bordering on water (so that you can see water surface from below)
 			cShow_transp = np.concatenate((cShow_transp[bShow_transp != 0], cWater[bWater == 0]), 0)
 			lShow_transp = np.concatenate((lShow_transp[bShow_transp != 0], lWater[bWater == 0]), 0)
 			bShow_transp = np.concatenate((bShow_transp[bShow_transp != 0], bWater[bWater == 0]), 0)
@@ -1362,7 +1359,7 @@ chat_string = ""
 class Display:
 
 	def init(size=settings.nominal_res):
-		#Initialising screen, 3D rendering and position/rotation vectors
+		# Initialising screen, 3D rendering and position/rotation vectors
 		if settings.fullscreen:
 			if sys.platform == "win32":
 				Display.size = (ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1))
@@ -1486,8 +1483,6 @@ class Sky:
 		time = 512 - abs(time)
 		return min(511, time) / Textures.mapsize_big[0]
 
-
-###FUNCTIONS
 
 
 def load_shaders():
