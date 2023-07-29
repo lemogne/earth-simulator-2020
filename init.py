@@ -974,10 +974,10 @@ class Player:
 			self.mv[2] = self.mv[2] * (1 - friction) + accel[2] * friction
 
 			# Check for block collisions
-			segments = math.ceil(abs(self.mv))
+			segments = math.ceil(abs(self.mv * dt))
 			for j in range(segments):
 				for i in range(3):
-					if self.check_in_block(i, dt / segments, self.mv):
+					if self.check_in_block(i, dt / segments, self.mv, self.pos):
 						if i == 1:
 							offset = 0 if self.mv[i] > 0 else (1 - (settings.player_height % 1))
 						else:
@@ -993,10 +993,10 @@ class Player:
 			# MOVEMENT
 			self.chunkpos = self.pos // World.chunk_size
 
-	def check_in_block(self, dim, dt, mv):
+	def check_in_block(self, dim, dt, mv, pos):
 		# TODO: optimise!!!
-		hitbox_min = self.pos - Vector(settings.player_width, 0, settings.player_width)
-		hitbox_max = self.pos + Vector(settings.player_width, settings.player_height, settings.player_width)
+		hitbox_min = pos - Vector(settings.player_width, 0, settings.player_width)
+		hitbox_max = pos + Vector(settings.player_width, settings.player_height, settings.player_width)
 
 		if mv[dim] > 0:
 			hitbox_min[dim] -= mv[dim] * dt

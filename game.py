@@ -27,14 +27,31 @@ while 1:
 		now = time.time()
 
 		if not settings.frame_cap or settings.maxFPS * (now - lastFrame) >= 1:
-			temp_pos = player.pos
+			temp_pos = player.pos + Vector(0,0,0)
 			if not UI.paused:
 				delta_t = now - lastTick
 				if delta_t < 0:
-					temp_pos -= delta_t * settings.ticks_per_second * (player.old_pos - player.pos)
+					ds = settings.ticks_per_second * (player.old_pos - player.pos)
 				else:
-					temp_pos -= delta_t * player.mv
+					ds = player.mv + Vector(0,0,0)
 
+				# Check for block collisions
+				segments = math.ceil(abs(ds * delta_t))
+				for j in range(segments):
+					for i in range(3):
+						if player.check_in_block(i, delta_t / segments, ds, temp_pos):
+							if i == 1:
+								offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
+							else:
+								offset = settings.player_width
+							offset += settings.hitbox_epsilon
+							if ds[i] < 0:
+								temp_pos[i] = math.ceil(temp_pos[i]) - offset
+							elif ds[i] > 0:
+								temp_pos[i] = math.floor(temp_pos[i]) + offset
+							ds[i] = 0
+					temp_pos -= ds * (delta_t / segments)
+										
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
 			render_sky(timeStart)
