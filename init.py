@@ -503,8 +503,8 @@ class Load_World:
 			# World height, position and camera rotation are read here
 			World.height = struct.unpack("i", data[19:23])[0]
 			make_coord_array()
-			player.pos = Vector(struct.unpack("3f", data[27:39]))
-			rv = Vector(struct.unpack("3f", data[39:51]))
+			player.pos = np.array((struct.unpack("3f", data[27:39])))
+			rv = np.array((struct.unpack("3f", data[39:51])))
 
 			# Chunk reading loop (reads until end of block data flag is read)
 			i = 51
@@ -699,7 +699,7 @@ class Settings:
 				World.preloaded_chunks = {}
 				World.loaded_chunks = {}
 				rv = player.rot
-				player.rot = Vector(0, 0, 0)
+				player.rot = np.array((0.0, 0.0, 0.0))
 				World.load_chunks(True)
 				process_chunks()
 			Display.init()
@@ -756,157 +756,6 @@ menu_buttons = Interface({
 })
 
 
-# Vector class definition
-class Vector:
-
-	def __init__(self, *tup):
-		if type(tup[0]) is tuple:
-			self.tuple = tup[0]
-		elif type(tup[0]) is Vector:
-			self.tuple = tup[0].tuple
-		else:
-			for n in tup:
-				if not (type(n) is int or type(n) is float or type(n) is np.ndarray or type(n) is np.int_
-				        or type(n) is np.float_):
-					raise TypeError
-			self.tuple = tuple(tup)
-		self.len = len(tup)
-
-	def __getitem__(self, key):
-		if key >= len(self.tuple):
-			raise IndexError
-		return self.tuple[key]
-
-	def __setitem__(self, key, value):
-		if key >= len(self.tuple):
-			raise IndexError
-		if not (type(value) is int or type(value) is float or type(value) is np.ndarray):
-			raise TypeError
-		temp = list(self.tuple)
-		temp[key] = value
-		self.tuple = tuple(temp)
-
-	def __add__(self, b):
-		if not (type(b) == Vector or type(b) == tuple):
-			raise TypeError
-		if not len(self) == len(b):
-			raise ValueError
-		temp = []
-		for i in range(len(b)):
-			temp.append(self[i] + b[i])
-		return Vector(tuple(temp))
-
-	def __radd__(self, b):
-		if type(b) is tuple:
-			return Vector(b) + self
-		raise TypeError
-
-	def __rsub__(self, b):
-		if type(b) is tuple:
-			return Vector(b) - self
-		raise TypeError
-
-	def __sub__(self, b):
-		if type(b) is tuple:
-			return self + (-Vector(b))
-		return self + (-b)
-
-	def __mul__(self, b):
-		if type(b) is int or type(b) is float or type(b) is np.ndarray:
-			temp = []
-			for i in range(len(self)):
-				temp.append(self[i] * b)
-			return Vector(tuple(temp))
-		elif type(b) is Vector or type(b) is tuple:
-			temp = 0.0
-			for i in range(len(self)):
-				temp += self[i] * b[i]
-			return temp
-		else:
-			raise TypeError
-
-	def __matmul__(self, b):
-		temp = []
-		if type(b) is int or type(b) is float or type(b) is np.ndarray:
-			return self * b
-		elif type(b) is Vector or type(b) is tuple:
-			if len(self) == 3 and len(b) == 3:
-				temp = [
-				    self[2] * b[1] - self[1] * b[2], self[0] * b[2] - self[2] * b[0], self[1] * b[0] - self[0] * b[1]
-				]
-			else:
-				raise ValueError
-		else:
-			raise TypeError
-		return Vector(tuple(temp))
-
-	def __rmul__(self, b):
-		return self * b
-
-	def __rmatmul__(self, b):
-		return Vector(b) @ self
-
-	def __truediv__(self, b):
-		if type(b) is int or type(b) is float or type(b) is np.ndarray:
-			temp = []
-			for coord in self:
-				temp.append(coord / b)
-			return Vector(tuple(temp))
-		else:
-			raise TypeError
-
-	def __floordiv__(self, b):
-		if type(b) is int or type(b) is float or type(b) is np.ndarray:
-			temp = []
-			for coord in self:
-				temp.append(int(coord // b))
-			return Vector(tuple(temp))
-		else:
-			raise TypeError
-
-	def __mod__(self, b):
-		if type(b) is int or type(b) is float or type(b) is np.ndarray:
-			temp = []
-			for coord in self:
-				temp.append(coord % b)
-			return Vector(tuple(temp))
-		else:
-			raise TypeError
-
-	def __neg__(self):
-		return Vector(*(-n for n in self))
-
-	def __pos__(self):
-		return self
-
-	def __abs__(self):
-		temp = 0
-		for n in self:
-			temp += n**2
-		return math.sqrt(temp)
-
-	def __eq__(self, b):
-		return type(b) is Vector and self.tuple == b.tuple
-
-	def __neq__(self, b):
-		return not (self == b)
-
-	def __len__(self):
-		return len(self.tuple)
-
-	def __repr__(self):
-		return str(self.tuple)
-
-	def __str__(self):
-		return str(self.tuple)
-
-	def __round__(self, ndigits):
-		temp = []
-		for i in self.tuple:
-			temp.append(round(i, ndigits))
-		return Vector(tuple(temp))
-
-
 
 class Cube:
 	# Faces: front, back, right, left, top, bottom
@@ -921,10 +770,10 @@ class Cube:
 
 
 class Player:
-	pos = Vector(0, 0, 0)
-	mv = Vector(0, 0, 0)
-	rot = Vector(0, 0, 0)  # pitch, yaw, roll
-	norm = Vector(0, 0, 0)
+	pos = np.array((0.0, 0.0, 0.0))
+	mv = np.array((0.0, 0.0, 0.0))
+	rot = np.array((0.0, 0.0, 0.0))  # pitch, yaw, roll
+	norm = np.array((0.0, 0.0, 0.0))
 	chunkpos = pos // settings.chunk_size
 	height = settings.player_height
 	flying = settings.flying
@@ -942,7 +791,7 @@ class Player:
 			block_under = World.get_block(self.pos - (0, 0.01, 0))
 			# Calculate movement vector based on key presses and environment
 			keystates = pg.key.get_pressed()
-			accel = Vector(0.0, 0.0, 0.0)
+			accel = np.array((0.0, 0.0, 0.0))
 			forward = (keystates[pg.K_w] - keystates[pg.K_s])
 			sideways = (keystates[pg.K_a] - keystates[pg.K_d])
 			downward = (keystates[pg.K_LSHIFT] - keystates[pg.K_SPACE])
@@ -974,7 +823,7 @@ class Player:
 			self.mv[2] = self.mv[2] * (1 - friction) + accel[2] * friction
 
 			# Check for block collisions
-			segments = math.ceil(abs(self.mv * dt))
+			segments = math.ceil(np.linalg.norm(self.mv * dt))
 			for j in range(segments):
 				for i in range(3):
 					if self.check_in_block(i, dt / segments, self.mv, self.pos):
@@ -995,8 +844,8 @@ class Player:
 
 	def check_in_block(self, dim, dt, mv, pos):
 		# TODO: optimise!!!
-		hitbox_min = pos - Vector(settings.player_width, 0, settings.player_width)
-		hitbox_max = pos + Vector(settings.player_width, settings.player_height, settings.player_width)
+		hitbox_min = pos - (settings.player_width, 0, settings.player_width)
+		hitbox_max = pos + (settings.player_width, settings.player_height, settings.player_width)
 
 		if mv[dim] > 0:
 			hitbox_min[dim] -= mv[dim] * dt
@@ -1024,17 +873,17 @@ class Player:
 			if not mouse_pos == Display.centre:
 				m_x = mouse_pos[0] - Display.centre[0]
 				m_y = Display.centre[1] - mouse_pos[1]
-				rv = Vector(max(min((m_y * settings.mouse_sensitivity), 90 - self.rot[0]), -90 - self.rot[0]),
-				            (m_x * settings.mouse_sensitivity), 0)
+				rv = np.array((max(min((m_y * settings.mouse_sensitivity), 90 - self.rot[0]), -90 - self.rot[0]),
+				            (m_x * settings.mouse_sensitivity), 0))
 				self.rot += rv
 				pg.mouse.set_pos(Display.centre)
 			else:
-				rv = Vector(0, 0, 0)
+				rv = np.array((0.0, 0.0, 0.0))
 
 			# norm is the normal vector of the culling plane, also the 'forward' vector
-			self.norm = Vector(-settings.movement_speed * math.sin(math.radians(self.rot[1])),
+			self.norm = np.array((-settings.movement_speed * math.sin(math.radians(self.rot[1])),
 			                   -settings.movement_speed * math.tan(math.radians(self.rot[0])),
-			                   settings.movement_speed * math.cos(math.radians(self.rot[1])))
+			                   settings.movement_speed * math.cos(math.radians(self.rot[1]))))
 
 			glRotatef(rv[1], 0, 1, 0)
 			glRotatef(rv[0], -self.norm[2], 0, self.norm[0])
@@ -1060,8 +909,8 @@ class World:
 
 	def load_chunks(ForceLoad=False):
 		global chunk_coords, in_view, chunk_y_lims
-		if player.old_chunkpos != player.chunkpos:
-			player.old_chunkpos = player.chunkpos
+		if (player.old_chunkpos != player.chunkpos).any():
+			player.old_chunkpos = player.chunkpos + (0, 0, 0)
 			chunk_coords = np.array(list(World.chunks.keys()))
 			chunk_distance = settings.chunk_distance(abs(chunk_coords[:, 0] - player.chunkpos[0]),
 			                                         abs(chunk_coords[:, 1] - player.chunkpos[2]))
@@ -1071,8 +920,8 @@ class World:
 		if ForceLoad:
 			in_view = np.full(shape=len(chunk_coords), fill_value=True)
 			player.old_rot = None
-		elif player.old_rot != player.rot:
-			player.old_rot = player.rot
+		elif (player.old_rot != player.rot // 5).any():
+			player.old_rot = player.rot // 5
 			in_view = World.chunk_in_view(chunk_coords, chunk_y_lims)
 
 		World.loaded_chunks = dict()
@@ -1210,18 +1059,18 @@ class World:
 			return np.zeros((World.chunk_size, World.height, World.chunk_size))
 
 	def chunk_in_view(chunk, y_lims):
-		leftV = Vector(-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
+		leftV = np.array((-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
 		               player.norm[1],
-		               -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2)))
-		rightV = Vector(settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
+		               -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2))))
+		rightV = np.array((settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
 		                player.norm[1],
-		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2)))
-		topV = Vector(player.norm[0],
+		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2))))
+		topV = np.array((player.norm[0],
 		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fovY))),
-		              player.norm[2])
-		bottomV = Vector(player.norm[0],
+		              player.norm[2]))
+		bottomV = np.array((player.norm[0],
 		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fovY))),
-		                 player.norm[2])
+		                 player.norm[2]))
 		frustum = (leftV, rightV, topV, bottomV)
 		inFrustum = True
 		for plane in frustum:
@@ -1230,9 +1079,9 @@ class World:
 				a = i >> 2
 				b = (i >> 1) & 1
 				c = i & 1
-				point = (Vector(chunk[:, 0] + a, y_lims[:, 0] + y_lims[:, 1] * b, chunk[:, 1] + c) -
-				         ((player.pos + Vector(0, player.height, 0)) / World.chunk_size))
-				all_inside |= point * plane < 0
+				point = (np.array((chunk[:, 0] + a, y_lims[:, 0] + y_lims[:, 1] * b, chunk[:, 1] + c)).T -
+				         ((player.pos + (0, player.height, 0)) / World.chunk_size))
+				all_inside |= point @ plane < 0
 			inFrustum &= all_inside
 		return inFrustum
 
@@ -1243,7 +1092,7 @@ class World:
 			return np.zeros((World.chunk_size, World.chunk_size))
 
 	def get_block(coords):
-		if coords == None:
+		if coords is None:
 			return None
 		if not World.height > coords[1] > 0:
 			return 0
@@ -1259,7 +1108,7 @@ class World:
 		World.preloaded_chunks[ch] = World.load_chunk(World.process_chunk(ch))
 
 	def set_block(coords, block):
-		if coords == None:
+		if coords is None:
 			return
 		chunk = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		if not chunk in World.chunks.keys() or coords[1] > World.height:
@@ -1383,7 +1232,7 @@ class Display:
 		glLoadIdentity()
 		gluPerspective(settings.fovY, (Display.size[0] / Display.size[1]), 0.1,
 		               settings.render_distance * 3**0.5 * World.chunk_size)
-		player.rot = Vector(0, 0, 0)
+		player.rot = np.array((0.0, 0.0, 0.0))
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 		glEnable(GL_BLEND)
 		glEnableClientState(GL_VERTEX_ARRAY)
@@ -1533,17 +1382,17 @@ def get_looked_at():
 	def rnd(p, dx):
 		return (dx < 0) * (p // 1) - (dx > 0) * ((-p) // 1) - p
 
-	rPos = player.pos + Vector(0, player.height, 0)
+	rPos = player.pos + (0, player.height, 0)
 	oPos = rPos
 	dt = 0
 	nm = np.array(-player.norm)
 	invnm = 1 / nm
-	while abs(rPos - (player.pos + Vector(0, player.height, 0))) <= settings.hand_reach:
+	while np.linalg.norm(rPos - (player.pos + (0, player.height, 0))) <= settings.hand_reach:
 		if World.get_block(rPos) not in [0, 8]:
 			return (rPos, oPos)
 		minim = rnd(np.array(rPos), nm) * invnm
 		dt = float(min(minim[minim != 0]))
-		oPos = rPos
+		oPos = rPos + (0, 0, 0)
 		rPos -= dt * 1.1 * player.norm
 	return (None, None)
 
