@@ -1,4 +1,5 @@
 from init import *
+import opensimplex as noise
 
 def generate_perlin_noise_2d(coords, shape, res, seed=None):
 	if seed == None:
@@ -35,20 +36,23 @@ def generate_perlin_noise_2d(coords, shape, res, seed=None):
 	return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
 
 def gen_heightmaps(coord_list):
+	def f(t):
+		return 6 * t**5 - 15 * t**4 + 10 * t**3
+	noise.seed(int(World.seed))
 	for coords in coord_list:
-		t_coords = tuple(coords * settings.region_size)
-		#print(coord_list)
+		t_coords = tuple(coords)
 		if t_coords in World.heightmap:
 			continue
-		
-		chunk_shape = np.array((settings.chunk_size, settings.chunk_size)) * settings.region_size
 
-		heightmap = ((generate_perlin_noise_2d(t_coords, chunk_shape, settings.T_res) + 1) / 2)
-		levelmap = (generate_perlin_noise_2d(t_coords, chunk_shape, settings.HL_res) + 1) / 2
-		variancemap = (generate_perlin_noise_2d(t_coords, chunk_shape, settings.V_res, World.seed + 89128) + 1) / 2
-		generalmap = (generate_perlin_noise_2d(t_coords, chunk_shape, settings.G_res, World.seed) + 1) / 2
-		m1map = (generate_perlin_noise_2d(t_coords, chunk_shape, (64, 64), World.seed) + 1) * 0.003
-		m2map = (generate_perlin_noise_2d(t_coords, chunk_shape, (256, 256), World.seed + 89128) + 1) * 0.001
+		x = np.arange(settings.chunk_size) + coords[1] * settings.chunk_size
+		z = np.arange(settings.chunk_size) + coords[0] * settings.chunk_size
+
+		heightmap = (noise.noise2array(x / settings.T_res[0], z / settings.T_res[1]) + 1) / 2
+		levelmap = (noise.noise2array(x / settings.HL_res[0], z / settings.HL_res[1]) + 1) / 2
+		variancemap = (noise.noise2array((x / settings.V_res[0]) - 36742.47, (z / settings.V_res[1]) + 478234.389) + 1) / 2
+		generalmap = (noise.noise2array(x / settings.G_res[0], z / settings.G_res[1]) + 1) / 2
+		m1map = (noise.noise2array(x * 0.25, z * 0.25) + 1) * 0.003
+		m2map = (noise.noise2array(x, z) + 1) * 0.001
 
 		heightmap *= variancemap**2
 		heightmap **= 0.5
@@ -57,16 +61,13 @@ def gen_heightmaps(coord_list):
 		heightmap += 2 * generalmap
 		heightmap /= 3
 		heightmap += m1map + m2map
-		heightmap /= 1.004
+		heightmap /= 1.008
+		heightmap = f(heightmap)	# Push values further towards extremes (else the height values are too close to the mean)
 		heightmap = (heightmap * (settings.heightlim[1] - settings.heightlim[0]) + settings.heightlim[0])
-		for i in range(settings.region_size):
-			for j in range(settings.region_size):
-				ch = tuple(t_coords + np.array((i, j)))
-				World.heightmap[ch] = heightmap[i * settings.chunk_size : (i + 1) * settings.chunk_size,
-				                                                         j * settings.chunk_size : (j + 1) * settings.chunk_size]
+		World.heightmap[t_coords] = heightmap
 
 def gen_chunk(coords):
-	gen_heightmaps((np.array([[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0]]) + coords) // settings.region_size)
+	gen_heightmaps(np.array([[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0]]) + coords)
 	heightmap = World.heightmap[coords]
 
 	# Neighbouring chunks
@@ -103,7 +104,7 @@ def gen_chunk(coords):
 
 	# Create masks for each generated block type
 	block_map = heights <= current_height
-	water_map = (heights > current_height) & (heights < 34)
+	water_map = (heights > current_height) & (heights <= settings.water_level)
 	surface_map = heights == current_height
 	grass_map = surface_map & (heights > 34) & tm
 	sand_map = surface_map & (heights < 35)
@@ -115,7 +116,7 @@ def gen_chunk(coords):
 	World.chunk_min_max[coords] = (chmin, (np.max(heightmap) / settings.chunk_size) - chmin)
 	World.chunks[coords] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
 												stone_map).astype(np.uint8)
-	World.light[coords] = ((heightmap > 33) * heightmap + (heightmap < 34) * 33)
+	World.light[coords] = ((heightmap > settings.water_level) * heightmap + (heightmap < settings.water_level) * settings.water_level)
 	pg.event.get()	# To prevent operating system from marking process as frozen
 
 # Generate random array of chunks
