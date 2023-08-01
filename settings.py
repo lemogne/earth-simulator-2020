@@ -6,20 +6,20 @@ world_height = 256
 world_size_F = 5
 
 heightlim = (10, 100)
-Tres = (32, 32)
-HLres = (8, 8)
-Vres = (8, 8)
-Gres = (2, 2)
+T_res = (32, 32)
+HL_res = (8, 8)
+V_res = (8, 8)
+G_res = (2, 2)		
 
 tree_density = 1 / 128
 
 #GRAPHICS
 render_distance = 15		
 ticks_per_second = 15
-maxFPS = 60
+max_FPS = 60
 nominal_res = (1205, 720)
 fullscreen = False		
-fovY = 60
+fov_Y = 60
 frame_cap = False
 texture_pack = "default"		
 shader_pack = "default"
@@ -45,7 +45,8 @@ icon_offset = (0.8, -0.8)
 pause_menu_color = (0.3, 0.3, 0.3)
 button_scale = 0.6
 logo_scale = 1
-shown = True
+shown = True					#hidden
+logo_shown = True				#hidden
 
 #OTHER
 day_length = 1200  				# Length of a day in seconds
@@ -53,7 +54,7 @@ starting_time = -150  			# Time at which the game starts (midday=0; 1 day=1024)
 unicode = True
 hitbox_epsilon = 0.00001
 text_align = True
-chunk_distance = lambda x, y: x + y	# Chunk distance norm
+chunk_distance = lambda x, y: x + y	#hidden; Chunk distance norm
 gpu_data_type = 1
 
 screenshot_dir = "screencaps"

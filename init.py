@@ -4,7 +4,7 @@ try:
 	import OpenGL_accelerate
 except ImportError:
 	pass
-import math, time, struct, os, sys, json
+import math, time, struct, os, sys, json, re
 from threading import Thread, local
 import numpy as np
 from OpenGL.GL import *
@@ -280,6 +280,15 @@ class UI:
 		if not UI.buttons.is_typing():
 			if type_ == str:
 				Settings.variables[var] = '"' + UI.buttons[name].get_text() + '"'
+			elif type_ == tuple:
+				value = getattr(settings, var)
+				Settings.variables[var] = "("
+				for i in range(len(value)):
+					if i != int(name[-1]):
+						Settings.variables[var] += str(value[i]) + ", "
+					else: 
+						Settings.variables[var] += UI.buttons[name].get_text() + ", "
+				Settings.variables[var] = Settings.variables[var][:-2] + ")"
 			else:
 				Settings.variables[var] = UI.buttons[name].get_text()
 
@@ -682,10 +691,12 @@ class Settings:
 	variables = {}
 
 	def main():
+		settings.logo_shown = True
 		UI.buttons = Settings.buttons
 
 	def cancel():
 		global paused_buttons, menu_buttons
+		settings.logo_shown = True
 		Settings.variables = {}
 		if UI.in_menu:
 			UI.buttons = menu_buttons
@@ -734,32 +745,136 @@ class Settings:
 		setfile.close()
 		Settings.cancel()
 
-	def tpack():
-		UI.type_button("TPValue", "texture_pack", str)
+	def generate_ui():
+		def datatype(data):
+			"""Heuristic function to determine datatype from string"""
+			if '"' in data or "'" in data:
+				return str
+			elif data in ["True", "False"]:
+				return bool
+			elif "(" in data:
+				return tuple
+			elif "." in data or "/" in data:
+				return float
+			return int
 
-	def fulls():
-		settings.fullscreen ^= True
-		Settings.variables["fullscreen"] = str(settings.fullscreen)
-		UI.buttons["FSValue"].set_text(str(settings.fullscreen))
+		def gen_name(var_name : str):
+			"""Generates userfriendly name from variable name"""
+			return var_name.capitalize().replace("_", " ")
 
-	def rendD():
-		UI.type_button("RDValue", "render_distance", int)
+		# Function generator functions
+		# Used to generate functions for buttons with given parameters
+		def gen_cat_func(category):
+			def cat_func():
+				UI.buttons = Settings.categories[category]
+				settings.logo_shown = False
+			return cat_func
 
-	def mouseS():
-		UI.type_button("MSValue", "mouse_sensitivity", float)
+		def gen_bool_func(var_name, button_name):
+			def button_func():
+				Settings.variables[var_name] = str(getattr(settings, var_name) ^ True)
+				UI.buttons[button_name].set_text(str(getattr(settings, var_name) ^ True))
+			return button_func
+
+		def gen_right_tuple_func(button_name, var_name, var_type):
+			def button_func():
+				UI.type_button(button_name + "1", var_name, var_type)
+			return button_func
+		
+		def gen_left_tuple_func(button_name, var_name, var_type):
+			def button_func():
+				UI.type_button(button_name + "0", var_name, var_type)
+			return button_func
+
+		def get_button_func(button_name, var_name, var_type):
+			return lambda: UI.type_button(button_name, var_name, var_type)
+
+		# Open and read settings file
+		setfile = open("settings.py", "r")
+		setlines = setfile.readlines()
+		setfile.close()
+
+		current_category = ""
+
+		# Button coordinates
+		y = -0.9
+		x = -0.5
+		cat_y = 0.4
+
+		# Main generation loop
+		for line in setlines:
+			# Parse line into (variable) = (value)   #(comment)
+			line_parse = re.fullmatch(r"(?:([a-zA-Z_0-9]+) *= *(.+?))?[ \t]*(?:#(.*))?\n?", line)
+			if not line_parse:
+				continue
+			comment = line_parse.group(3)
+			var_name = line_parse.group(1)
+			value = line_parse.group(2)
+
+			# Create / generate settings categories from comments
+			# skip lines with no variables being set
+			if not var_name:
+				if comment:
+					current_category = comment.capitalize()
+					Settings.buttons.buttons[current_category] = Button((0, cat_y), current_category, False, False, gen_cat_func(current_category))
+					Settings.categories[current_category] = Interface({"Back": Button((0.67, -1.2), "Back", False, True, Settings.main)})
+					cat_y -= 0.3
+					y = -0.9
+					x = -1
+				continue
+
+			# Skip hidden settings
+			if comment and comment[:6] == "hidden":
+				continue
+
+			button_name = var_name + "_value"
+			var_type = datatype(value)
+
+			# Assign correct behaviour of input field given datatype
+			if var_type is bool:
+				button_func = gen_bool_func(var_name, button_name)
+			elif var_type is tuple:
+				# Match tuple
+				tuple_values = re.search(r"\(([\-0-9.]*) *, *([\-0-9.]*)\)", value)
+
+				if not tuple_values:
+					# This happens when the tuple has more than two values or something is malformed
+					# This is complicated to handle and will be left out for now
+					continue
+
+				# Special case: left value of 2-tuple
+				left_val = tuple_values.group(1)
+				left_button_func = gen_left_tuple_func(button_name, var_name, var_type)
+				Settings.categories[current_category].buttons[button_name + "0"] = Button((x, y), left_val, True, True, left_button_func)
+
+				# right value adjusted so that rest of function can carry on as normal
+				button_func = gen_right_tuple_func(button_name, var_name, var_type)
+				button_name += "1"
+				y += 0.25
+				value = tuple_values.group(2)
+			else:
+				button_func = get_button_func(button_name, var_name, var_type)
+
+			# If string, extract value
+			if var_type is str:
+				value = re.sub("[\"'](.*)[\"']", r"\1", value)	
+
+			# Insert new setting into correct category
+			Settings.categories[current_category].buttons[var_name+"_label"] = Button((x - 1, y), gen_name(var_name), None, True)
+			Settings.categories[current_category].buttons[button_name] = Button((x, y), value, var_type != bool, True, button_func)
+
+			# Coordinate calculations
+			y += 0.3
+			if y > 1.2:
+				y = -0.9
+				x = 1.5
 
 	buttons = Interface({
-	    "Cancel": Button((0.67, -0.8), "Cancel", False, True, cancel),
-	    "OK": Button((-0.67, -0.8), "OK", False, True, apply),
-	    "TPLabel": Button((-0.67, -0.5), "Texture Pack", None, True),
-	    "TPValue": Button((0.67, -0.5), settings.texture_pack, True, True, tpack),
-	    "FSLabel": Button((-0.67, -0.2), "Fullscreen", None, True),
-	    "FSValue": Button((0.67, -0.2), str(settings.fullscreen), False, True, fulls),
-	    "RDLabel": Button((-0.67, 0.1), "Render Distance", None, True),
-	    "RDValue": Button((0.67, 0.1), str(settings.render_distance), True, True, rendD),
-	    "MSLabel": Button((-0.67, 0.4), "Mouse Sensitivity", None, True),
-	    "MSValue": Button((0.67, 0.4), str(settings.mouse_sensitivity), True, True, mouseS)
+	    "Cancel": Button((0.67, -1.2), "Cancel", False, True, cancel),
+	    "OK": Button((-0.67, -1.2), "OK", False, True, apply)
 	})
+
+	categories = {}
 
 
 paused_buttons = Interface({
@@ -1087,10 +1202,10 @@ class World:
 		                player.norm[1],
 		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2))))
 		topV = np.array((player.norm[0],
-		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fovY))),
+		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fov_Y))),
 		              player.norm[2]))
 		bottomV = np.array((player.norm[0],
-		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fovY))),
+		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fov_Y))),
 		                 player.norm[2]))
 		frustum = (leftV, rightV, topV, bottomV)
 		inFrustum = True
@@ -1242,7 +1357,7 @@ class Display:
 		else:
 			Display.size = size
 		Display.fovX = math.degrees(
-		    2 * math.atan(math.tan(math.radians(settings.fovY / 2)) * (Display.size[0] / Display.size[1])))
+		    2 * math.atan(math.tan(math.radians(settings.fov_Y / 2)) * (Display.size[0] / Display.size[1])))
 		Display.centre = (Display.size[0] // 2, Display.size[1] // 2)
 
 		Display.screen = pg.display.set_mode(Display.size, (FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL
@@ -1251,7 +1366,7 @@ class Display:
 		glLoadIdentity()
 		glMatrixMode(GL_MODELVIEW)
 		glLoadIdentity()
-		gluPerspective(settings.fovY, (Display.size[0] / Display.size[1]), 0.1,
+		gluPerspective(settings.fov_Y, (Display.size[0] / Display.size[1]), 0.1,
 		               settings.render_distance * 3**0.5 * World.chunk_size)
 		player.rot = np.array((0.0, 0.0, 0.0))
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -1499,3 +1614,4 @@ Textures.update_pixel_size()
 UI.init_font()
 init_schematics()
 Sky.init()
+Settings.generate_ui()

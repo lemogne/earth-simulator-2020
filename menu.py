@@ -11,20 +11,21 @@ def run():
 	lastFrame = now
 	while UI.in_menu:
 		now = time.time()
-		if not settings.frame_cap or settings.maxFPS * (now - lastFrame) >= 1:
+		if not settings.frame_cap or settings.max_FPS * (now - lastFrame) >= 1:
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			glBegin(GL_QUADS)
 			for i in range(4):
 				glTexCoord2fv(Textures.title_coords[i])
 				glVertex2fv(character_coords[i] * 2 - 1)
 			glEnd()
-
-			glBindTexture(GL_TEXTURE_2D, Textures.logo[0])
-			glBegin(GL_QUADS)
-			for i in range(4):
-				glTexCoord2fv(character_coords[i])
-				glVertex2fv(Textures.logo_coords[i])
-			glEnd()
+			
+			if settings.logo_shown:
+				glBindTexture(GL_TEXTURE_2D, Textures.logo[0])
+				glBegin(GL_QUADS)
+				for i in range(4):
+					glTexCoord2fv(character_coords[i])
+					glVertex2fv(Textures.logo_coords[i])
+				glEnd()
 
 			UI.render_buttons()
 			UI.write("v0.3", (0.875, -0.98), 0.05, color=(1, 1, 1))

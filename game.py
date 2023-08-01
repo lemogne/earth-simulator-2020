@@ -26,7 +26,7 @@ while 1:
 		# Measure time passed since last frame
 		now = time.time()
 
-		if not settings.frame_cap or settings.maxFPS * (now - lastFrame) >= 1:
+		if not settings.frame_cap or settings.max_FPS * (now - lastFrame) >= 1:
 			temp_pos = player.pos + (0,0,0)
 			if not UI.paused:
 				delta_t = now - lastTick
