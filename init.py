@@ -4,7 +4,7 @@ try:
 	import OpenGL_accelerate
 except ImportError:
 	pass
-import math, time, struct, os, sys, json, re
+import math, time, struct, os, sys, json, re, random
 from threading import Thread, local
 import numpy as np
 from OpenGL.GL import *
@@ -1051,6 +1051,7 @@ class World:
 	thread_exception = None
 	height = settings.world_height
 	chunk_size = settings.chunk_size
+	heightmap = {}
 
 	def init():
 		World.height = settings.world_height
@@ -1550,14 +1551,17 @@ def get_looked_at():
 	return (None, None)
 
 
-def rand(seed, dim):
+def rand(seed, dim, coords):
 	op = []
-	nn = seed
-	p1 = 141650939
-	p2 = 256203221
-	for i in range(dim[0] * dim[1]):
-		nn = (nn * p2) % p1
-		op.append(nn / p1)
+	for i in range(dim[0]):
+		for j in range(dim[1]):
+			random.seed(seed + coords[0] * 58274 - coords[1] * 437)
+			random.random()
+			random.random()
+			random.random()
+			random.random()
+			op.append(random.random())
+
 	return np.resize(op, dim)
 
 
