@@ -281,7 +281,10 @@ class UI:
 			if type_ == str:
 				Settings.variables[var] = '"' + UI.buttons[name].get_text() + '"'
 			elif type_ == tuple:
-				value = getattr(settings, var)
+				if var not in Settings.variables:
+					value = getattr(settings, var)
+				else:
+					value = eval(Settings.variables[var])
 				Settings.variables[var] = "("
 				for i in range(len(value)):
 					if i != int(name[-1]):
@@ -355,6 +358,7 @@ def leave_world():
 	World.preloaded_chunks = {}
 	UI.paused = False
 	UI.in_menu = True
+	World.init()
 
 
 class Start_Game:
@@ -719,27 +723,31 @@ class Settings:
 		imm = UI.in_menu
 		if len(Settings.variables) > 0:
 			global unicode, game_blocks, seethrough
-			game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
-			seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
+			#game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
+			#seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
 			glDeleteTextures(
 			    5,
 			    np.array([Textures.ui, Textures.logo, Textures.text, Textures.terrain, Textures.title])[:, 0])
 			if not imm:
-				plcA = np.array(list(World.preloaded_chunks.values()), dtype="object")
-				plcA = np.array(list(plcA[plcA != None]))
-				glDeleteBuffers(len(plcA), plcA[:, 0])
+				preloaded_chunks = np.array(list(World.preloaded_chunks.values()), dtype="object")
+				preloaded_chunks = np.array(list(preloaded_chunks[preloaded_chunks != None]))
+				glDeleteBuffers(len(preloaded_chunks), preloaded_chunks[:, 0])
 				World.preloaded_chunks = {}
 				World.loaded_chunks = {}
-				rv = player.rot
 				player.rot = np.array((0.0, 0.0, 0.0))
 				World.load_chunks(True)
 				process_chunks()
 			Display.init()
 			Textures.init()
 			Textures.update_pixel_size()
+			UI.init_font()
 			init_schematics()
+			Sky.init()
+			player.init()
+
 			if imm:
 				mode_2D()
+				World.init()
 
 		Sky.init()
 		setfile.close()
@@ -910,9 +918,6 @@ class Player:
 	mv = np.array((0.0, 0.0, 0.0))
 	rot = np.array((0.0, 0.0, 0.0))  # pitch, yaw, roll
 	norm = np.array((0.0, 0.0, 0.0))
-	chunkpos = pos // settings.chunk_size
-	height = settings.player_height
-	flying = settings.flying
 
 	# Efficiency redundancies
 	old_chunkpos = None
@@ -920,6 +925,11 @@ class Player:
 
 	# Used in the rendering engine to prevent sudden 'snapping' when mv = 0
 	old_pos = pos
+
+	def init(self):
+		self.chunkpos = self.pos // settings.chunk_size
+		self.height = settings.player_height
+		self.flying = settings.flying
 
 	def do_tick(self, dt):
 		if not (UI.paused or UI.buttons.is_typing()):
@@ -1026,6 +1036,7 @@ class Player:
 
 
 player = Player()
+player.init()
 
 
 class World:
@@ -1042,6 +1053,11 @@ class World:
 	thread_exception = None
 	height = settings.world_height
 	chunk_size = settings.chunk_size
+
+	def init():
+		World.height = settings.world_height
+		World.chunk_size = settings.chunk_size
+		World.game_time = settings.starting_time
 
 	def load_chunks(ForceLoad=False):
 		global chunk_coords, in_view, chunk_y_lims
@@ -1334,8 +1350,8 @@ def make_coord_array():
 make_coord_array()
 constV = ((0, 0), (0, 0), (0, 0))
 
-game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
-seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
+game_blocks = None
+seethrough = None
 
 character_coords = np.array(((0, 1), (0, 0), (1, 0), (1, 1)))
 chat_string = ""
@@ -1381,6 +1397,9 @@ class Display:
 class Textures:
 
 	def init():
+		global game_blocks, seethrough
+		game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
+		seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
 		Textures.ui = Textures.load("UI.png")
 		if unicode:
 			try:
@@ -1615,3 +1634,4 @@ UI.init_font()
 init_schematics()
 Sky.init()
 Settings.generate_ui()
+World.init()
