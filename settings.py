@@ -4,7 +4,6 @@ import numpy as np
 chunk_size = 16
 world_height = 256
 world_size_F = 5
-region_size = 16
 
 heightlim = (10, 100)
 T_res = (16, 16)
@@ -12,7 +11,9 @@ HL_res = (64, 64)
 V_res = (64, 64)
 G_res = (256, 256)		
 
-tree_density = 1 / 128
+tree_density_mean = 1 / 32
+tree_density_var = 2
+tree_res = (4, 4)
 water_level = 33
 
 #GRAPHICS
@@ -22,7 +23,7 @@ max_FPS = 60
 nominal_res = (1205, 720)
 fullscreen = False		
 fov_Y = 60
-frame_cap = False
+frame_cap = True
 texture_pack = "default"		
 shader_pack = "default"
 schematic_pack = "default"
