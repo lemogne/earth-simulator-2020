@@ -47,20 +47,22 @@ def render(chat_string):
 	glMatrixMode(GL_MODELVIEW)
 	glPushMatrix()
 	glTranslatef(128, 128, 128)
-	for loaded_chunk in World.loaded_chunks:
-		glPushMatrix()
-		glTranslatef(loaded_chunk[0] * World.chunk_size, 0, loaded_chunk[1] * World.chunk_size)
-		render_chunk(World.loaded_chunks[loaded_chunk][0])
-		glPopMatrix()
+	for reg in World.active_regions:
+		for loaded_chunk in reg.loaded_chunks:
+			glPushMatrix()
+			glTranslatef((loaded_chunk[0] + reg.pos[0]) * World.chunk_size, 0, (loaded_chunk[1] + reg.pos[1]) * World.chunk_size)
+			render_chunk(reg.loaded_chunks[loaded_chunk][0])
+			glPopMatrix()
 
 	#Load transparent blocks
 	glEnable(GL_BLEND)
-	for loaded_chunk in World.loaded_chunks:
-		if World.loaded_chunks[loaded_chunk][1] != None:
-			glPushMatrix()
-			glTranslatef(loaded_chunk[0] * World.chunk_size, 0, loaded_chunk[1] * World.chunk_size)
-			render_chunk(World.loaded_chunks[loaded_chunk][1])
-			glPopMatrix()
+	for reg in World.active_regions:
+		for loaded_chunk in reg.loaded_chunks:
+			if reg.loaded_chunks[loaded_chunk][1] != None:
+				glPushMatrix()
+				glTranslatef((loaded_chunk[0] + reg.pos[0]) * World.chunk_size, 0, (loaded_chunk[1] + reg.pos[1]) * World.chunk_size)
+				render_chunk(reg.loaded_chunks[loaded_chunk][1])
+				glPopMatrix()
 	
 	glPopMatrix()
 	#Highlight block being looked at

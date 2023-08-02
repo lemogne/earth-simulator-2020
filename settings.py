@@ -4,6 +4,7 @@ import numpy as np
 chunk_size = 16
 world_height = 256
 world_size_F = 5
+region_size = 32
 
 heightlim = (10, 100)
 T_res = (16, 16)
