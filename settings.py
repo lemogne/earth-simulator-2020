@@ -12,7 +12,7 @@ V_res = (64, 64)
 G_res = (256, 256)		
 
 tree_density_mean = 1 / 32
-tree_density_var = 2
+tree_density_var = 1
 tree_res = (4, 4)
 water_level = 33
 
