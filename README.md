@@ -4,6 +4,7 @@ A Minecraft clone written in Python; very creatively named because I couldn't th
 - `pygame`
 - `pyopengl`
 - `numpy`
+- `opensimplex`
 
 The newest versions are recommended, but older versions should still work. 
 
