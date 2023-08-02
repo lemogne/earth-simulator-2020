@@ -1074,6 +1074,8 @@ class World:
 		elif (player.old_rot != player.rot // 5).any():
 			player.old_rot = player.rot // 5
 			in_view = World.chunk_in_view(chunk_coords, chunk_y_lims)
+		else:
+			return
 
 		World.loaded_chunks = dict()
 		while len(World.preloaded_data) > 0:
