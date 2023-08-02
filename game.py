@@ -9,8 +9,12 @@ while 1:
 
 	World.load_chunks(True)
 	process_chunks()
+
 	chunk_loop = Thread(target = chunk_thread, daemon = True)
 	chunk_loop.start()
+
+	gen_chunk_loop = Thread(target = terragen.gen_chunk_thread, daemon = True)
+	gen_chunk_loop.start()
 
 	timeStart = time.time()
 	lastTick = timeStart
@@ -160,3 +164,4 @@ Game Time:\t{round(World.game_time)}"""
 						settings.current_block -= 1
 						settings.current_block %= len(game_blocks)
 	chunk_loop.join()
+	gen_chunk_loop.join()
