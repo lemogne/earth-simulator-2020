@@ -1073,7 +1073,7 @@ class Region:
 		if self.lock:
 			return
 		if change_pos or self.chunk_coords is None or ForceLoad:
-			self.chunk_coords = np.mgrid[0:settings.region_size, 0:settings.region_size].T
+			self.chunk_coords = np.mgrid[0:settings.region_size, 0:settings.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
 			                                         abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1]))
 			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
@@ -1194,6 +1194,8 @@ class World:
 		blocks = np.vstack(chunk)
 		chunk_light = region.light[ch]
 		
+		# TODO: add check to not render chunks whose neighbours haven't been generated yet
+
 		# Shifts 3D block array by +/-1 in each direction to determine neighbour
 		neighbours = [
 		    np.dstack(((World.chunk_data((chunkpos[0], chunkpos[1] - 1))[:, :, -1:]), chunk[:, :, :-1])),
