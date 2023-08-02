@@ -1,9 +1,5 @@
 import pygame as pg
 from pygame.locals import *
-try:
-	import OpenGL_accelerate
-except ImportError:
-	pass
 import math, time, struct, os, sys, json, re, random
 from threading import Thread, local
 import numpy as np

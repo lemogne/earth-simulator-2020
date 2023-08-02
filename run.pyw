@@ -21,11 +21,6 @@ except Exception:
 		crashfile = "crashes/crash_" + str(int(time.time())) + ".txt"
 		message += "Your game has crashed due to an unexpected error.\nPython has raised the following exception:\n" + \
 		           "".join(ex) + "\nThe exception has been logged in the file \n" + crashfile + " ."
-		
-		try:
-			import OpenGL_accelerate
-		except ImportError:
-			pass
 		try:
 			from OpenGL.GL import *
 			from OpenGL.GLU import *
