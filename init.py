@@ -721,15 +721,12 @@ class Settings:
 			    5,
 			    np.array([Textures.ui, Textures.logo, Textures.text, Textures.terrain, Textures.title])[:, 0])
 			if not imm:
-				preloaded_chunks = np.array(list(World.preloaded_chunks.values()), dtype="object")
-				preloaded_chunks = np.array(list(preloaded_chunks[preloaded_chunks != None]))
-				glDeleteBuffers(len(preloaded_chunks), preloaded_chunks[:, 0])
-				World.preloaded_chunks = {}
-				World.loaded_chunks = {}
+				for region in World.regions:
+					World.regions[region].unload_vram()
 				player.rot = np.array((0.0, 0.0, 0.0))
-				World.load_chunks(True)
-				process_chunks()
-			Display.init()
+			pg.quit()
+			init_pygame()
+			Display.init(settings.nominal_res)
 			Textures.init()
 			Textures.update_pixel_size()
 			UI.init_font()
@@ -740,6 +737,9 @@ class Settings:
 			if imm:
 				mode_2D()
 				World.init()
+			else:
+				World.load_chunks(True)
+				process_chunks()
 
 		Sky.init()
 		setfile.close()
@@ -1064,6 +1064,12 @@ class Region:
 			glDeleteBuffers(1, int(self.preloaded_chunks[ch][0][0]))
 			if self.preloaded_chunks[ch][1] != None:
 				glDeleteBuffers(1, int(self.preloaded_chunks[ch][1][0]))
+
+	def unload_vram(self):
+		self.__del__()
+		self.preloaded_chunks = dict()
+		self.loaded_chunks = dict()
+		self.preloaded_data = dict()
 
 	def load_chunks(self, change_pos, change_rot, ForceLoad=False):
 		if self.lock:
@@ -1445,7 +1451,7 @@ chat_string = ""
 
 class Display:
 
-	def init(size=settings.nominal_res):
+	def init(size):
 		# Initialising screen, 3D rendering and position/rotation vectors
 		if settings.fullscreen:
 			if sys.platform == "win32":
@@ -1702,7 +1708,7 @@ def init_schematics():
 
 
 init_pygame()
-Display.init()
+Display.init(settings.nominal_res)
 Textures.init()
 Textures.update_pixel_size()
 UI.init_font()
