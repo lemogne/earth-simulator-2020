@@ -1116,7 +1116,7 @@ class Region:
 
 	def thorough_chmax(self, ch):
 		for y in range(World.height - 1, -1, -1):
-			if (self.chunks[ch][:, y, :] != 0).any():
+			if seethrough[self.chunks[ch][:, y, :]].any():
 				chmin = self.chunk_min_max[ch][0]
 				return (y / World.chunk_size) - chmin
 		return 0
@@ -1388,7 +1388,7 @@ class World:
 	def update_chunk_min_max(coords, block):
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		region, ch = World.get_region(ch)
-		if not region:
+		if not region or not region.gen_chunks[ch]:
 			return
 		# Update chunk min and max values
 		chmin, chmax = region.chunk_min_max[ch]
