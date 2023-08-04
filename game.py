@@ -16,12 +16,12 @@ while 1:
 	gen_chunk_loop = Thread(target = terragen.gen_chunk_thread, daemon = True)
 	gen_chunk_loop.start()
 
-	timeStart = time.time()
-	lastTick = timeStart
-	lastFrame = timeStart
+	time_start = time.time()
+	last_tick = time_start
+	last_frame = time_start
 
 	# FPS counting
-	last_second = int(timeStart)
+	last_second = int(time_start)
 	frames = 0
 	prev_frames = 0
 
@@ -30,10 +30,10 @@ while 1:
 		# Measure time passed since last frame
 		now = time.time()
 
-		if not settings.frame_cap or settings.max_FPS * (now - lastFrame) >= 1:
+		if not settings.frame_cap or settings.max_FPS * (now - last_frame) >= 1:
 			temp_pos = player.pos + (0,0,0)
 			if not UI.paused:
-				delta_t = now - lastTick
+				delta_t = now - last_tick
 				if delta_t < 0:
 					ds = settings.ticks_per_second * (player.old_pos - player.pos)
 				else:
@@ -58,28 +58,28 @@ while 1:
 										
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
-			render_sky(timeStart)
+			render_sky(time_start)
 			glPushMatrix()
 			glTranslatef(-temp_pos[0], -temp_pos[1] - player.height, -temp_pos[2])
 			render(chat_string)
 			glPopMatrix()
 			pg.display.flip()
-			lastFrame = now
+			last_frame = now
 			frames += 1
 
-		while lastTick < now:
+		while last_tick < now:
 			player.do_tick(1 / settings.ticks_per_second)
-			lastTick += 1 / settings.ticks_per_second
+			last_tick += 1 / settings.ticks_per_second
 			if UI.show_game_info:
-				lookedAt_coords = get_looked_at()[0]
-				if lookedAt_coords is not None:
-					lookedAt_str = str(lookedAt_coords // 1)[1:-1]
+				looked_at_coords = get_looked_at()[0]
+				if looked_at_coords is not None:
+					lookedAt_str = str(looked_at_coords // 1)[1:-1]
 				else:
 					lookedAt_str = "None"
 				chat_string = f"""Position:\t{str(np.round(player.pos, 4))[1:-1]}
 Rotation:\t{str(np.round(player.rot, 4))[1:-1]}
 FPS:\t\t{prev_frames}
-Looking at:\t{lookedAt_str} (ID: {World.get_block(lookedAt_coords)})
+Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})
 World Seed:\t{World.seed}
 Game Time:\t{round(World.game_time)}"""
 
@@ -118,21 +118,21 @@ Game Time:\t{round(World.game_time)}"""
 					else:
 						#Place/Destroy blocks
 						if event.button == 1:
-							LookedAt = get_looked_at()[0]
-							if LookedAt is not None:
+							looked_at = get_looked_at()[0]
+							if looked_at is not None:
 								if 8 in [
-								    World.get_block(LookedAt + (0, 1, 0)),
-								    World.get_block(LookedAt + (1, 0, 0)),
-								    World.get_block(LookedAt + (-1, 0, 0)),
-								    World.get_block(LookedAt + (0, 0, 1)),
-								    World.get_block(LookedAt + (0, 0, -1))
+								    World.get_block(looked_at + (0, 1, 0)),
+								    World.get_block(looked_at + (1, 0, 0)),
+								    World.get_block(looked_at + (-1, 0, 0)),
+								    World.get_block(looked_at + (0, 0, 1)),
+								    World.get_block(looked_at + (0, 0, -1))
 								]:
-									World.set_block(LookedAt, 8)
+									World.set_block(looked_at, 8)
 								else:
-									World.set_block(LookedAt, 0)
+									World.set_block(looked_at, 0)
 						elif event.button == 2:
-							if (LookedAt := get_looked_at()[0]) is not None:
-								settings.current_block = World.get_block(LookedAt)
+							if (looked_at := get_looked_at()[0]) is not None:
+								settings.current_block = World.get_block(looked_at)
 						elif event.button == 3:
 							World.set_block(get_looked_at()[1], settings.current_block)
 				elif event.type == pg.VIDEORESIZE and settings.resizeable:

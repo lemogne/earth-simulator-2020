@@ -1230,11 +1230,11 @@ class World:
 			nbWater = neighbours[i] == 8
 			nb_transp = seethrough[neighbours[i]]
 			bWater = blocks[nbWater]
-			cWater = coordArray[nbWater]
+			cWater = coord_array[nbWater]
 			lWater = lnb[nbWater]
 
 			b_transp = blocks[nb_transp]
-			c_transp = coordArray[nb_transp]
+			c_transp = coord_array[nb_transp]
 			l_transp = lnb[nb_transp]
 
 			SMask = ~seethrough[b_transp]
@@ -1243,7 +1243,7 @@ class World:
 			lShow = l_transp[SMask]
 
 			TMask1 = seethrough[blocks] & (blocks != neighbours[i])
-			cShow_transp = coordArray[TMask1]
+			cShow_transp = coord_array[TMask1]
 			bShow_transp = blocks[TMask1]
 			lShow_transp = lnb[TMask1]
 
@@ -1293,20 +1293,20 @@ class World:
 			return np.zeros((World.chunk_size, World.height, World.chunk_size))
 
 	def chunk_in_view(chunk, y_lims):
-		leftV = np.array((-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
+		left_v = np.array((-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
 		               player.norm[1],
 		               -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2))))
-		rightV = np.array((settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
+		right_v = np.array((settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
 		                player.norm[1],
 		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2))))
-		topV = np.array((player.norm[0],
+		top_v = np.array((player.norm[0],
 		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fov_Y))),
 		              player.norm[2]))
-		bottomV = np.array((player.norm[0],
+		bottom_v = np.array((player.norm[0],
 		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fov_Y))),
 		                 player.norm[2]))
-		frustum = (leftV, rightV, topV, bottomV)
-		inFrustum = True
+		frustum = (left_v, right_v, top_v, bottom_v)
+		in_frustum = True
 		for plane in frustum:
 			all_inside = False
 			for i in range(8):
@@ -1316,8 +1316,8 @@ class World:
 				point = (np.array((chunk[:, 0] + a, y_lims[:, 0] + y_lims[:, 1] * b, chunk[:, 1] + c)).T -
 				         ((player.pos + (0, player.height, 0)) / World.chunk_size))
 				all_inside |= point @ plane < 0
-			inFrustum &= all_inside
-		return inFrustum
+			in_frustum &= all_inside
+		return in_frustum
 
 	def light_data(coords):
 		region, ch = World.get_region(coords)
@@ -1421,20 +1421,20 @@ class World:
 
 		region.chunk_min_max[ch] = (chmin_new, chmax_new)
 
-coordArray = []
+coord_array = []
 
 
 def make_coord_array():
-	global coordArray, coordArray3
-	coordArray = []
+	global coord_array, coord_array3
+	coord_array = []
 	for i in range(World.chunk_size):
-		coordArray.append([])
+		coord_array.append([])
 		for j in range(World.height):
-			coordArray[i].append([])
+			coord_array[i].append([])
 			for k in range(World.chunk_size):
-				coordArray[i][j].append((i, j, k))
-	coordArray3 = np.array(coordArray)
-	coordArray = np.vstack(coordArray)
+				coord_array[i][j].append((i, j, k))
+	coord_array3 = np.array(coord_array)
+	coord_array = np.vstack(coord_array)
 
 
 make_coord_array()
@@ -1526,31 +1526,31 @@ class Textures:
 	def generate(blocks):
 		Face = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1], [0, 1, 1, 1, 2, 2], [0, 1, 1, 1, 2, 3],
 		                 [0, 1, 2, 2, 3, 4], [0, 1, 2, 3, 4, 5]])
-		TexArray = []
+		tex_array = []
 		for block in blocks:
-			CS = np.tile(Cube.sides, (6, 1))
+			cube_sides = np.tile(Cube.sides, (6, 1))
 			tiles = np.array(block)[Face[len(block) - 1]]
-			BR = np.repeat(
+			block_textures = np.repeat(
 			    np.array([tiles % Textures.mapsize[0], -(tiles + 1) // Textures.mapsize[0]]).T, 6, 0)
-			TexArray.append(CS + BR)
-		return np.array(TexArray)
+			tex_array.append(cube_sides + block_textures)
+		return np.array(tex_array)
 
 	def load(file, filter = GL_NEAREST):
-		textureSurface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
-		textureData = pg.image.tostring(textureSurface, "RGBA", 1)
+		texture_surface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
+		texture_data = pg.image.tostring(texture_surface, "RGBA", 1)
 
 		glEnable(GL_TEXTURE_2D)
 		glEnableClientState(GL_VERTEX_ARRAY)
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY)
 		texid = glGenTextures(1)
 		glBindTexture(GL_TEXTURE_2D, texid)
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSurface.get_width(), textureSurface.get_height(), 0, GL_RGBA,
-					GL_UNSIGNED_BYTE, textureData)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_surface.get_width(), texture_surface.get_height(), 0, GL_RGBA,
+					GL_UNSIGNED_BYTE, texture_data)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter)
-		return (texid, textureSurface)
+		return (texid, texture_surface)
 
 class Sky:
 	triangles = ((2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5), (6, 8, 4), (9, 6, 4), (8, 7, 4), (7, 9, 4), (6, 2, 8),
@@ -1578,27 +1578,27 @@ class Sky:
 
 
 def load_shaders():
-	vertexShader = compileShader(open(f"shaders/{settings.shader_pack}/shader.vert", 'r').read(), GL_VERTEX_SHADER)
-	fragmentShader = compileShader(open(f"shaders/{settings.shader_pack}/shader.frag", 'r').read(), GL_FRAGMENT_SHADER)
-	skyVertSh = compileShader(open(f"shaders/{settings.shader_pack}/skysh.vert", 'r').read(), GL_VERTEX_SHADER)
-	skyFragSh = compileShader(open(f"shaders/{settings.shader_pack}/skysh.frag", 'r').read(), GL_FRAGMENT_SHADER)
-	waterVertSh = compileShader(open(f"shaders/{settings.shader_pack}/watersh.vert", 'r').read(), GL_VERTEX_SHADER)
-	#waterFragSh= compileShader(open(f"shaders/{settings.shader_pack}/watersh.frag", 'r').read(), GL_FRAGMENT_SHADER)
-	global DayNightShader, skyShader, waterShader
-	DayNightShader = glCreateProgram()
-	glAttachShader(DayNightShader, vertexShader)
-	glAttachShader(DayNightShader, fragmentShader)
-	glLinkProgram(DayNightShader)
+	vertex_shader = compileShader(open(f"shaders/{settings.shader_pack}/shader.vert", 'r').read(), GL_VERTEX_SHADER)
+	fragment_shader = compileShader(open(f"shaders/{settings.shader_pack}/shader.frag", 'r').read(), GL_FRAGMENT_SHADER)
+	sky_vertex_shader = compileShader(open(f"shaders/{settings.shader_pack}/skysh.vert", 'r').read(), GL_VERTEX_SHADER)
+	sky_fragment_shader = compileShader(open(f"shaders/{settings.shader_pack}/skysh.frag", 'r').read(), GL_FRAGMENT_SHADER)
+	water_vertex_shader = compileShader(open(f"shaders/{settings.shader_pack}/watersh.vert", 'r').read(), GL_VERTEX_SHADER)
+	#water_fragment_shader = compileShader(open(f"shaders/{settings.shader_pack}/watersh.frag", 'r').read(), GL_FRAGMENT_SHADER)
+	global day_night_shader, sky_shader, water_shader
+	day_night_shader = glCreateProgram()
+	glAttachShader(day_night_shader, vertex_shader)
+	glAttachShader(day_night_shader, fragment_shader)
+	glLinkProgram(day_night_shader)
 
-	skyShader = glCreateProgram()
-	glAttachShader(skyShader, skyVertSh)
-	glAttachShader(skyShader, skyFragSh)
-	glLinkProgram(skyShader)
+	sky_shader = glCreateProgram()
+	glAttachShader(sky_shader, sky_vertex_shader)
+	glAttachShader(sky_shader, sky_fragment_shader)
+	glLinkProgram(sky_shader)
 
-	waterShader = glCreateProgram()
-	glAttachShader(waterShader, waterVertSh)
-	glAttachShader(waterShader, fragmentShader)
-	glLinkProgram(waterShader)
+	water_shader = glCreateProgram()
+	glAttachShader(water_shader, water_vertex_shader)
+	glAttachShader(water_shader, fragment_shader)
+	glLinkProgram(water_shader)
 
 
 def process_chunks():
