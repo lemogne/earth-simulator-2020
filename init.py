@@ -367,11 +367,8 @@ class Start_Game:
 			try:
 				World.seed = int(UI.buttons["Seed"].get_text())
 			except ValueError:
-				try:
-					World.seed = float(UI.buttons["Seed"].get_text())
-				except ValueError:
-					UI.buttons["Info"].set_text("World seed must be a real number!")
-					return
+				UI.buttons["Info"].set_text("World seed must be an integer!")
+				return
 		UI.in_menu = False
 
 	def screen():
@@ -1135,6 +1132,7 @@ class World:
 	height = settings.world_height
 	chunk_size = settings.chunk_size
 	heightmap = {}
+	trees = {}
 	regions = {}
 	chunks_to_generate = []
 	active_regions = []
@@ -1619,9 +1617,18 @@ def chunk_thread():
 		World.thread_exception = e
 		print(e)
 
+def schematic_lighting(schematic):
+	not_found = np.full((schematic.shape[0], schematic.shape[2]), True)
+	light = np.full((schematic.shape[0], schematic.shape[2]), schematic.shape[1])
+	for y in range(schematic.shape[1] - 1, -1, -1):
+		not_found &= schematic[:, y, :] == 0
+		light[not_found] = y - 1
+	return light
+
 def get_schematic(file):
 	raw_json = open(f"schematics/{settings.schematic_pack}/{file}.json").read()
-	return np.array(json.loads(raw_json))
+	schem = np.array(json.loads(raw_json))
+	return (schem, schematic_lighting(schem))
 
 
 def get_looked_at():

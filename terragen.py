@@ -1,31 +1,39 @@
 from init import *
 import opensimplex as noise
 
+def f(t):
+	return 6 * t**5 - 15 * t**4 + 10 * t**3
+
 def gen_trees(coords):
-	trees = []
-	for i in range(coords[0] - 1, coords[0] + 2):
-		for j in range(coords[1] - 1, coords[1] + 2):
+	total_trees = []
+	for i in range(coords[0] - 1, coords[0] + 1):
+		for j in range(coords[1] - 1, coords[1] + 1):
+			if (i, j) in World.trees:
+				total_trees.append(World.trees[(i, j)])
+				continue
+
 			# Calculate trees in chunk
 			avg_n = settings.chunk_size * settings.chunk_size * settings.tree_density_mean
 			n = noise.noise2(i / settings.T_res[0], j / settings.T_res[1]) * settings.tree_density_var * avg_n
 			n += settings.chunk_size * settings.chunk_size * settings.tree_density_mean
 
 			# Generate tree coordinates
-			for k in range(int(n)):
-				x = (noise.noise2(i + 64324.4 - 434.23 * k, j + 728491.2 - 8174.283 * k) + 1) / 2
-				z = (noise.noise2(i - 46324.4 + 344.23 * k, j - 278491.2 + 1874.283 * k) + 1) / 2
-				tree_type = noise.noise2(i - 2361.53 + 71834.23 * k, j - 94829.4 + 33428.3 * k) > 0
-				x = int(x * settings.chunk_size)
-				z = int(z * settings.chunk_size)
-				y = int(World.heightmap[(i, j)][x, z])
-				trees.append((x + i * settings.chunk_size, y, z + j * settings.chunk_size, tree_type))
-	return np.array(trees)
+			k = np.arange(int(n))
+			x = (noise.noise2array(i + 64324.4 - 434.23 * k, np.array((j + 728491.2,))) + 1) / 2
+			z = (noise.noise2array(np.array((i - 46324.4,)), j - 278491.2 + 1874.283 * k).T + 1) / 2
+			tree_type = noise.noise2array(i - 2361.53 + 71834.23 * k, np.array((j - 94829.4,))) > 0
+			x = (f(x) * settings.chunk_size).astype(np.int64)
+			z = (f(z) * settings.chunk_size).astype(np.int64)
+			y = World.heightmap[(i, j)][x, z].astype(np.int64)
+
+			trees = np.array((x + i * settings.chunk_size, y, z + j * settings.chunk_size, tree_type)).T[:, 0]
+			World.trees[(i, j)] = trees
+			total_trees.append(trees)
+	trees = np.concatenate(total_trees, axis=0)
+	return trees
 
 
 def gen_heightmaps(coord_list):
-	def f(t):
-		return 6 * t**5 - 15 * t**4 + 10 * t**3
-	noise.seed(int(World.seed))
 	for coords in coord_list:
 		t_coords = tuple(coords)
 		if t_coords in World.heightmap:
@@ -117,24 +125,43 @@ def gen_chunk(coords):
 
 	# Paste Trees into terrain:
 	for tree in trees:
-		if World.get_block(tree[:3] + (-2, 0, -3)) != 2:
+		dim = schematic["tree"][tree[3]][0].shape
+		if World.get_block(tree[:3]) not in [2, 3, 0]:
+			#if World.get_block(tree[:3] + (dim[0] // 2, 0, dim[2] // 2)) not in [0, 8]:
+			#	print(World.get_block(tree[:3] + (dim[0] // 2, 0, dim[2] // 2)))
 			continue
-		for x in range(5):
-			for y in range(7):
-				for z in range(6):
-					a_x = x + tree[0] - 2
-					a_z = z + tree[2] - 3
-					x_in_bounds = coords[0] * settings.chunk_size <= a_x < (coords[0] + 1) * settings.chunk_size
-					z_in_bounds = coords[1] * settings.chunk_size <= a_z < (coords[1] + 1) * settings.chunk_size
-					if schematic["tree"][tree[3]][x, y, z] != 0 and x_in_bounds and z_in_bounds:
-						World.put_block((a_x, y + tree[1] + 1, a_z), schematic["tree"][tree[3]][x, y, z])
+		tree[[0, 2]] -= np.array(coords) * settings.chunk_size
+		tree[:3] -= (dim[0] // 2, 0, dim[2] // 2)
+		min_x = max(-tree[0], 0)
+		max_x = min(dim[0], settings.chunk_size - tree[0])
+		min_z = max(-tree[2], 0)
+		max_z = min(dim[2], settings.chunk_size - tree[2])
+
+		if max_x < min_x or max_z < min_z:
+			continue
+
+		tree_part  = schematic["tree"][tree[3]][0][min_x : max_x, :, min_z : max_z]
+		tree_light = schematic["tree"][tree[3]][1][min_x : max_x,    min_z : max_z]
+		min_x = max(tree[0], 0)
+		max_x = min(tree[0] + dim[0], settings.chunk_size)
+		min_z = max(tree[2], 0)
+		max_z = min(tree[2] + dim[2], settings.chunk_size)
+
+		not_air = tree_part != 0
+		light_change = tree_light != -1
+
+		region.chunks[ch][min_x : max_x, tree[1] + 1 : tree[1] + 1 + dim[1], min_z : max_z][not_air] = tree_part[not_air]
+		region.light[ch][min_x : max_x, min_z : max_z][light_change] = tree_light[light_change] + tree[1] + 1
+
 	region.lock = False
 
 # Generate random array of chunks
 def gen_terrain():
 	World.height = settings.world_height
 	World.chunk_size = settings.chunk_size
-
+	World.heightmap = {}
+	World.trees = {}
+	noise.seed(int(World.seed))
 	make_coord_array()
 	gen_region((0, 0))
 
