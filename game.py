@@ -53,6 +53,8 @@ while 1:
 								temp_pos[i] = math.ceil(temp_pos[i]) - offset
 							elif ds[i] > 0:
 								temp_pos[i] = math.floor(temp_pos[i]) + offset
+							player.pos[i] = temp_pos[i]
+							player.mv[i] = 0
 							ds[i] = 0
 					temp_pos -= ds * (delta_t / segments)
 										
