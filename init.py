@@ -916,37 +916,29 @@ class Cube:
 
 
 def collision_check(pos, ds, dt):
+	def collide(i, pos, ds):
+		if i == 1:
+			offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
+		else:
+			offset = settings.player_width
+		offset += settings.hitbox_epsilon
+		if ds[i] < 0:
+			pos[i] = math.ceil(pos[i]) - offset
+		elif ds[i] > 0:
+			pos[i] = math.floor(pos[i]) + offset
+		ds[i] = 0
+
 	# Check for block collisions
 	segments = math.ceil(np.linalg.norm(ds * dt))
-	for j in range(segments):
+	for _ in range(segments):
 		# Basic check in each dimension separately
 		for i in range(3):
 			if player.check_in_block(i, dt / segments, ds, pos):
-				if i == 1:
-					offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
-				else:
-					offset = settings.player_width
-				offset += settings.hitbox_epsilon
-				if ds[i] < 0:
-					pos[i] = math.ceil(pos[i]) - offset
-				elif ds[i] > 0:
-					pos[i] = math.floor(pos[i]) + offset
-				ds[i] = 0
+				collide(i, pos, ds)
 
 		# Edge cases
-		while player.check_in_block(-1, dt / segments, ds, pos):
-			i = ds.argmax()
-			if i == 1:
-				offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
-			else:
-				offset = settings.player_width
-			offset += settings.hitbox_epsilon
-			if ds[i] < 0:
-				pos[i] = math.ceil(pos[i]) - offset
-			elif ds[i] > 0:
-				pos[i] = math.floor(pos[i]) + offset
-			ds[i] = 0
-		pos -= ds * (dt / segments)
+		while player.check_in_block(-1, dt / segments, ds, pos) and ds.any():
+			collide(abs(ds).argmax(), pos, ds)
 
 
 class Player:
