@@ -5,6 +5,7 @@ A Minecraft clone written in Python; very creatively named because I couldn't th
 - `pyopengl`
 - `numpy`
 - `opensimplex`
+Optionally, `numba` can be installed, as `opensimplex` optionally uses it to JIT its code (which improves performance).
 
 The newest versions are recommended, but older versions should still work. 
 
