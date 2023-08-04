@@ -686,6 +686,7 @@ class Load_World:
 
 class Settings:
 	variables = {}
+	graphics_changed = False
 
 	def main():
 		settings.logo_shown = True
@@ -709,36 +710,37 @@ class Settings:
 			var = line.split(" = ")[0]
 			if var in Settings.variables:
 				comm = line.split("#", 1) + [""]
-				setfile.write(f"{var} = {Settings.variables[var]}\t\t{comm[1]}\n")
+				setfile.write(f"{var} = {Settings.variables[var]}\t\t#{comm[1]}\n")
 				exec(f"settings.{var} = {Settings.variables[var]}")
 			else:
 				setfile.write(line)
 		imm = UI.in_menu
 		if len(Settings.variables) > 0:
 			global unicode, game_blocks, seethrough
-			glDeleteTextures(
-			    5,
-			    np.array([Textures.ui, Textures.logo, Textures.text, Textures.terrain, Textures.title])[:, 0])
-			if not imm:
-				for region in World.regions:
-					World.regions[region].unload_vram()
-				player.rot = np.array((0.0, 0.0, 0.0))
-			pg.quit()
-			init_pygame()
-			Display.init(settings.nominal_res)
-			Textures.init()
-			Textures.update_pixel_size()
-			UI.init_font()
+			if Settings.graphics_changed:
+				glDeleteTextures(
+					5,
+					np.array([Textures.ui, Textures.logo, Textures.text, Textures.terrain, Textures.title])[:, 0])
+				if not imm:
+					for region in World.regions:
+						World.regions[region].unload_vram()
+					player.rot = np.array((0.0, 0.0, 0.0))
+				pg.quit()
+				init_pygame()
+				Display.init(settings.nominal_res)
+				Textures.init()
+				Textures.update_pixel_size()
+				UI.init_font()
+				Sky.init()
 			init_schematics()
-			Sky.init()
 			player.init()
 
 			if imm:
 				mode_2D()
 				World.init()
-			else:
+			elif Settings.graphics_changed:
 				World.load_chunks(True)
-				process_chunks()
+				process_chunks(True)
 
 		Sky.init()
 		setfile.close()
@@ -769,24 +771,34 @@ class Settings:
 				settings.logo_shown = False
 			return cat_func
 
-		def gen_bool_func(var_name, button_name):
+		def gen_bool_func(var_name, button_name, is_graphics):
 			def button_func():
 				Settings.variables[var_name] = str(getattr(settings, var_name) ^ True)
 				UI.buttons[button_name].set_text(str(getattr(settings, var_name) ^ True))
+				if is_graphics:
+					Settings.graphics_changed = True
 			return button_func
 
-		def gen_right_tuple_func(button_name, var_name, var_type):
+		def gen_right_tuple_func(button_name, var_name, var_type, is_graphics):
 			def button_func():
 				UI.type_button(button_name + "1", var_name, var_type)
+				if is_graphics:
+					Settings.graphics_changed = True
 			return button_func
 		
-		def gen_left_tuple_func(button_name, var_name, var_type):
+		def gen_left_tuple_func(button_name, var_name, var_type, is_graphics):
 			def button_func():
 				UI.type_button(button_name + "0", var_name, var_type)
+				if is_graphics:
+					Settings.graphics_changed = True
 			return button_func
 
-		def get_button_func(button_name, var_name, var_type):
-			return lambda: UI.type_button(button_name, var_name, var_type)
+		def get_button_func(button_name, var_name, var_type, is_graphics):
+			def button_func():
+				UI.type_button(button_name, var_name, var_type)
+				if is_graphics:
+					Settings.graphics_changed = True
+			return button_func 
 
 		# Open and read settings file
 		setfile = open("settings.py", "r")
@@ -831,7 +843,7 @@ class Settings:
 
 			# Assign correct behaviour of input field given datatype
 			if var_type is bool:
-				button_func = gen_bool_func(var_name, button_name)
+				button_func = gen_bool_func(var_name, button_name, current_category == "Graphics")
 			elif var_type is tuple:
 				# Match tuple
 				tuple_values = re.search(r"\(([\-0-9.]*) *, *([\-0-9.]*)\)", value)
@@ -843,16 +855,16 @@ class Settings:
 
 				# Special case: right value of 2-tuple
 				right_val = tuple_values.group(2)
-				right_button_func = gen_right_tuple_func(button_name, var_name, var_type)
+				right_button_func = gen_right_tuple_func(button_name, var_name, var_type, current_category == "Graphics")
 				Settings.categories[current_category].buttons[button_name + "1"] = Button((x, y), right_val, True, True, right_button_func)
 
 				# left value adjusted so that rest of function can carry on as normal
-				button_func = gen_left_tuple_func(button_name, var_name, var_type)
+				button_func = gen_left_tuple_func(button_name, var_name, var_type, current_category == "Graphics")
 				button_name += "0"
 				y += 0.25
 				value = tuple_values.group(1)
 			else:
-				button_func = get_button_func(button_name, var_name, var_type)
+				button_func = get_button_func(button_name, var_name, var_type, current_category == "Graphics")
 
 			# If string, extract value
 			if var_type is str:
