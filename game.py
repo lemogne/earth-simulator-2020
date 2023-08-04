@@ -8,7 +8,7 @@ while 1:
 		terragen.gen_terrain()
 
 	World.load_chunks(True)
-	process_chunks()
+	process_chunks(True)
 
 	chunk_loop = Thread(target = chunk_thread, daemon = True)
 	chunk_loop.start()
@@ -16,24 +16,24 @@ while 1:
 	gen_chunk_loop = Thread(target = terragen.gen_chunk_thread, daemon = True)
 	gen_chunk_loop.start()
 
-	time_start = time.time()
-	last_tick = time_start
-	last_frame = time_start
+	Time.start = time.time()
+	Time.last_tick = Time.start
+	Time.last_frame = Time.start
 
 	# FPS counting
-	last_second = int(time_start)
-	frames = 0
-	prev_frames = 0
+	Time.last_second = int(Time.start)
+	Time.frames = 0
+	Time.prev_frames = 0
 
 	while not UI.in_menu:
 		mouse_pos = pg.mouse.get_pos()
 		# Measure time passed since last frame
 		now = time.time()
 
-		if not settings.frame_cap or settings.max_FPS * (now - last_frame) >= 1:
+		if not settings.frame_cap or settings.max_FPS * (now - Time.last_frame) >= 1:
 			temp_pos = player.pos + (0,0,0)
 			if not UI.paused:
-				delta_t = now - last_tick
+				delta_t = now - Time.last_tick
 				if delta_t < 0:
 					ds = settings.ticks_per_second * (player.old_pos - player.pos)
 				else:
@@ -58,18 +58,18 @@ while 1:
 										
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
-			render_sky(time_start)
+			render_sky(Time.start)
 			glPushMatrix()
 			glTranslatef(-temp_pos[0], -temp_pos[1] - player.height, -temp_pos[2])
 			render(chat_string)
 			glPopMatrix()
 			pg.display.flip()
-			last_frame = now
-			frames += 1
+			Time.last_frame = now
+			Time.frames += 1
 
-		while last_tick < now:
+		while Time.last_tick < now:
 			player.do_tick(1 / settings.ticks_per_second)
-			last_tick += 1 / settings.ticks_per_second
+			Time.last_tick += 1 / settings.ticks_per_second
 			if UI.show_game_info:
 				looked_at_coords = get_looked_at()[0]
 				if looked_at_coords is not None:
@@ -78,16 +78,16 @@ while 1:
 					lookedAt_str = "None"
 				chat_string = f"""Position:\t{str(np.round(player.pos, 4))[1:-1]}
 Rotation:\t{str(np.round(player.rot, 4))[1:-1]}
-FPS:\t\t{prev_frames}
+FPS:\t\t{Time.prev_frames}
 Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})
 World Seed:\t{World.seed}
 Game Time:\t{round(World.game_time)}"""
 
 		# Resets frame count
-		if int(now) != last_second:
-			prev_frames = frames
-			frames = 0
-			last_second = int(now)
+		if int(now) != Time.last_second:
+			Time.prev_frames = Time.frames
+			Time.frames = 0
+			Time.last_second = int(now)
 
 		if UI.paused:
 			UI.check_hover(mouse_pos)
@@ -163,5 +163,6 @@ Game Time:\t{round(World.game_time)}"""
 					elif event.key == pg.K_DOWN:
 						settings.current_block -= 1
 						settings.current_block %= len(game_blocks)
+	UI.in_menu = True
 	chunk_loop.join()
 	gen_chunk_loop.join()

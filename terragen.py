@@ -179,6 +179,10 @@ def gen_region(reg):
 
 def gen_chunks():
 	while (ch := World.chunks_to_generate.pop(0) if len(World.chunks_to_generate) > 0 else None):
+		while time.time() - Time.last_frame >= 1 / settings.min_FPS:
+			if UI.in_menu:
+				return
+			time.sleep(0.1)
 		gen_chunk(ch)
 
 def gen_chunk_thread():
