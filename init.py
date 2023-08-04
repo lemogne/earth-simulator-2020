@@ -915,6 +915,39 @@ class Cube:
 	normals = np.array(((0, 0, 1), (0, 0, -1), (-1, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 0)))
 
 
+def collision_check(pos, ds, dt):
+	# Check for block collisions
+	segments = math.ceil(np.linalg.norm(ds * dt))
+	for j in range(segments):
+		# Basic check in each dimension separately
+		for i in range(3):
+			if player.check_in_block(i, dt / segments, ds, pos):
+				if i == 1:
+					offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
+				else:
+					offset = settings.player_width
+				offset += settings.hitbox_epsilon
+				if ds[i] < 0:
+					pos[i] = math.ceil(pos[i]) - offset
+				elif ds[i] > 0:
+					pos[i] = math.floor(pos[i]) + offset
+				ds[i] = 0
+
+		# Edge cases
+		while player.check_in_block(-1, dt / segments, ds, pos):
+			i = ds.argmax()
+			if i == 1:
+				offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
+			else:
+				offset = settings.player_width
+			offset += settings.hitbox_epsilon
+			if ds[i] < 0:
+				pos[i] = math.ceil(pos[i]) - offset
+			elif ds[i] > 0:
+				pos[i] = math.floor(pos[i]) + offset
+			ds[i] = 0
+		pos -= ds * (dt / segments)
+
 
 class Player:
 	pos = np.array((0.0, 0.0, 0.0))
@@ -971,22 +1004,7 @@ class Player:
 			self.mv[1] = (self.mv[1] + accel[1]) * density
 			self.mv[2] = self.mv[2] * (1 - friction) + accel[2] * friction
 
-			# Check for block collisions
-			segments = math.ceil(np.linalg.norm(self.mv * dt))
-			for j in range(segments):
-				for i in range(3):
-					if self.check_in_block(i, dt / segments, self.mv, self.pos):
-						if i == 1:
-							offset = 0 if self.mv[i] > 0 else (1 - (settings.player_height % 1))
-						else:
-							offset = settings.player_width
-						offset += settings.hitbox_epsilon
-						if self.mv[i] < 0:
-							self.pos[i] = math.ceil(self.pos[i]) - offset
-						elif self.mv[i] > 0:
-							self.pos[i] = math.floor(self.pos[i]) + offset
-						self.mv[i] = 0
-				self.pos -= self.mv * (dt / segments)
+			collision_check(self.pos, self.mv, dt)
 
 			# MOVEMENT
 			self.chunkpos = self.pos // World.chunk_size
@@ -996,13 +1014,22 @@ class Player:
 		hitbox_min = pos - (settings.player_width, 0, settings.player_width)
 		hitbox_max = pos + (settings.player_width, settings.player_height, settings.player_width)
 
-		if mv[dim] > 0:
-			hitbox_min[dim] -= mv[dim] * dt
-			hitbox_max[dim] = hitbox_min[dim]
+		# dim < 0 means check in all dimensions
+		# dim ≥ 0 means only check that dimension
+		if dim >= 0:
+			if mv[dim] > 0:
+				hitbox_min[dim] -= mv[dim] * dt
+				hitbox_max[dim] = hitbox_min[dim]
+			else:
+				hitbox_max[dim] -= mv[dim] * dt
+				hitbox_min[dim] = hitbox_max[dim]
 		else:
-			hitbox_max[dim] -= mv[dim] * dt
-			hitbox_min[dim] = hitbox_max[dim]
-
+			for i in range(3):
+				if mv[i] > 0:
+					hitbox_min[i] -= mv[i] * dt
+				else:
+					hitbox_max[i] -= mv[i] * dt
+			
 		x_min = math.floor(hitbox_min[0])
 		x_max = math.floor(hitbox_max[0])
 		y_min = math.floor(hitbox_min[1])
