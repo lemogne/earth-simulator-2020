@@ -90,7 +90,7 @@ def gen_chunk(coords):
 	# Map of where grass should be (x and z coordinates)
 	terrainmap = (slope[0] <= rockC) & (slope[1] <= rockC) & (slope[2] <= rockC) & (slope[3] <= rockC)
 
-	heights = coordArray3[:, :, :, 1]  # Array of y-values for each block in the chunk
+	heights = coord_array3[:, :, :, 1]  # Array of y-values for each block in the chunk
 
 	# Cut-down heightmap copied for each y value
 	current_height = np.transpose(np.tile(heightmap, (settings.world_height, 1, 1)), (1, 0, 2)).astype(np.uint16)

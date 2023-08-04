@@ -32,11 +32,11 @@ def render_sky(time_start):
 def render(chat_string):
 	#render blocks
 	if World.get_block(player.pos + (0, player.height, 0)) == 8:
-		glUseProgram(waterShader)
+		glUseProgram(water_shader)
 	else:
-		glUseProgram(DayNightShader)
-	bright_loc = glGetUniformLocation(DayNightShader, "brightness")
-	mapsize_loc = glGetUniformLocation(DayNightShader, "mapsize")
+		glUseProgram(day_night_shader)
+	bright_loc = glGetUniformLocation(day_night_shader, "brightness")
+	mapsize_loc = glGetUniformLocation(day_night_shader, "mapsize")
 	glUniform1f(bright_loc, 1 - Sky.texture_offset(World.game_time))
 	glUniform2f(mapsize_loc, *(Textures.mapsize))
 
@@ -82,7 +82,7 @@ def render(chat_string):
 		glEnd()
 
 	#Draw currently selected block texture
-	glUseProgram(skyShader)
+	glUseProgram(sky_shader)
 	if settings.shown:
 		if settings.current_block:
 			glBegin(GL_TRIANGLES)
