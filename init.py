@@ -1079,7 +1079,6 @@ class Region:
 	chunk_coords = None
 	in_view = None
 	chunk_y_lims = None
-	lock = True
 	gen_chunks = None
 
 	def __init__(self, pos):
@@ -1092,7 +1091,6 @@ class Region:
 		self.light = dict()
 		self.pos = np.array(pos) * World.region_size
 		self.chunk_coords = None
-		self.lock = False
 		self.gen_chunks = np.full((World.region_size, World.region_size), False)
 
 
@@ -1109,8 +1107,6 @@ class Region:
 		self.preloaded_data = dict()
 
 	def load_chunks(self, change_pos, change_rot, ForceLoad=False):
-		if self.lock:
-			return
 		if change_pos or self.chunk_coords is None or ForceLoad:
 			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
@@ -1681,8 +1677,6 @@ def load_shaders():
 
 def process_chunks(skip_smoothing = False):
 	for reg in World.active_regions:
-		if reg.lock:
-			continue
 		while (ch := reg.to_be_loaded.pop(0) if len(reg.to_be_loaded) > 0 else None):
 			while not skip_smoothing and time.time() - Time.last_frame >= 1 / settings.min_FPS:
 				if UI.in_menu:
