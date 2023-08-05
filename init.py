@@ -1358,6 +1358,13 @@ class World:
 		else:
 			return np.zeros((World.chunk_size, World.height, World.chunk_size))
 
+	def get_height(coords):
+		chunk = tuple(coords // World.chunk_size)
+		local_coords = tuple(coords % World.chunk_size)
+		if not chunk in World.heightmap:
+			return (settings.heightlim[0] + settings.heightlim[1]) / 2
+		return World.heightmap[chunk][local_coords]
+
 	def chunk_in_view(chunk, y_lims):
 		left_v = np.array((-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
 		               player.norm[1],
