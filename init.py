@@ -939,6 +939,7 @@ def collision_check(pos, ds, dt):
 		# Edge cases
 		while player.check_in_block(-1, dt / segments, ds, pos) and ds.any():
 			collide(abs(ds).argmax(), pos, ds)
+		pos -= ds * dt / segments
 
 
 class Player:
