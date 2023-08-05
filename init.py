@@ -1168,6 +1168,7 @@ class World:
 	heightlim = settings.heightlim
 	water_level = settings.water_level
 	region_size = settings.region_size
+	infinite = settings.infinite
 	T_res = settings.T_res
 	HL_res = settings.HL_res
 	V_res = settings.V_res
@@ -1200,6 +1201,7 @@ class World:
 		World.tree_density_mean = settings.tree_density_mean
 		World.tree_density_var = settings.tree_density_var
 		World.tree_res = settings.tree_res
+		World.infinite = settings.infinite
 
 	def load_chunks(ForceLoad=False):
 		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
