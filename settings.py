@@ -1,11 +1,12 @@
 import numpy as np
 
-#WORLD GENERATION
+#WORLD
 chunk_size = 16
 world_height = 256
 region_size = 32
 infinite = True
 
+#WORLD GENERATION
 heightlim = (10, 100)
 T_res = (16, 16)
 HL_res = (64, 64)
@@ -61,5 +62,5 @@ hitbox_epsilon = 0.00001
 text_align = True
 chunk_distance = lambda x, y: x + y	#hidden; Chunk distance norm
 gpu_data_type = 1
-
+worlds_per_page = 5				# Amount of worlds per page in the Load World menu
 screenshot_dir = "screencaps"
