@@ -413,8 +413,8 @@ class Save_World:
 
 			# Calculating bytes needed to save world data; saving that information to the file
 			BLblocks = Save_World.bytesneeded(len(game_blocks))
-			BLpos = Save_World.bytesneeded(World.height * (World.chunk_size**2))
-			savefile.write(np.array([BLblocks, BLpos, World.region_size], dtype=np.int8).tobytes())
+
+			savefile.write(np.array([BLblocks, World.infinite == 0, World.region_size], dtype=np.int8).tobytes())
 			savefile.write(np.array([World.height, World.chunk_size], dtype=np.int32).tobytes())
 			savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
 			savefile.write(np.array(player.rot, dtype=np.float32).tobytes())
@@ -427,8 +427,7 @@ class Save_World:
 			savefile.write(np.array(World.G_res, dtype=np.float32).tobytes())
 
 			savefile.write(np.array(World.tree_res, dtype=np.float32).tobytes())
-			savefile.write(np.array([World.tree_density_mean, World.tree_density_var], dtype=np.float32).tobytes())
-			savefile.write(np.array([not World.infinite, 0, 0], dtype=np.int32).tobytes())
+			savefile.write(np.array([World.tree_density_mean, World.tree_density_var, 0, 0, 0], dtype=np.float32).tobytes())
 			savefile.write(np.array(len(World.regions), dtype=np.int32).tobytes())
 
 			table_pos = savefile.tell()
@@ -456,12 +455,18 @@ class Save_World:
 						if block == lastblock:
 							counter += 1
 						elif lastblock != None:
+							BLpos = Save_World.bytesneeded(counter)
+							if counter > 127:
+								write_bytes(BLpos + 127, 1)
 							write_bytes(counter, BLpos)
 							write_bytes(lastblock, BLblocks)
 							counter = 1
 							lastblock = block
 						else:
 							lastblock = block
+					BLpos = Save_World.bytesneeded(counter)
+					if counter > 127:
+						write_bytes(BLpos + 127, 1)
 					write_bytes(counter, BLpos)
 					write_bytes(lastblock, BLblocks)
 				i = savefile.tell()
@@ -529,7 +534,8 @@ class Load_World:
 				print("This file is not a world!")
 				return
 			if version == b"v0.3":
-				World.file_byte_sizes = struct.unpack("2b", readfile.read(2))
+				World.bytes_for_block_ID = struct.unpack("b", readfile.read(1))[0]
+				World.infinite = struct.unpack("b", readfile.read(1))[0] == 0
 				World.region_size = struct.unpack("b", readfile.read(1))[0]
 				World.height = struct.unpack("i", readfile.read(4))[0]
 				World.chunk_size = struct.unpack("I", readfile.read(4))[0]
@@ -553,8 +559,7 @@ class Load_World:
 				World.tree_res = struct.unpack("2f", readfile.read(8))
 				World.tree_density_mean = struct.unpack("f", readfile.read(4))[0]
 				World.tree_density_var = struct.unpack("f", readfile.read(4))[0]
-				World.infinite = struct.unpack("b", readfile.read(1))[0] == 0
-				readfile.seek(11, 1)
+				readfile.seek(12, 1)
 
 				# Region table
 				region_table_size = struct.unpack("I", readfile.read(4))[0]
@@ -687,7 +692,7 @@ class Load_World:
 		region = World.regions[reg]
 		readfile = World.file
 		readfile.seek(World.region_table[reg][0])
-		BLblocks, BLpos = World.file_byte_sizes
+		BLblocks = World.bytes_for_block_ID
 
 		# Chunk reading loop (reads until end of block data flag is read)
 		for _ in range(World.region_table[reg][1]):
@@ -702,19 +707,19 @@ class Load_World:
 			# reads blocks until chunk is filled
 			i = 0
 			while i < chunk_length:
-				n = int.from_bytes(readfile.read(BLpos), "little")
+				k = int.from_bytes(readfile.read(1), "little")
+				if k > 127:
+					n = int.from_bytes(readfile.read(k - 127), "little")
+				else:
+					n = k
 				block = int.from_bytes(readfile.read(BLblocks), "little")
 				chunk_buffer[i:i+n] = block
 				i += n
 
-			# Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
-			try:
-				region.chunks[ch] = np.reshape(np.array(chunk_buffer),
-											(World.height, World.chunk_size, World.chunk_size)).astype(np.uint8).transpose((1, 0, 2))
-			except ValueError:
-				UI.buttons["Info"].set_text("World file corrupted!")
-				print("World file corrupted!")
-				return
+			region.chunks[ch] = np.reshape(
+				np.array(chunk_buffer), 
+				(World.height, World.chunk_size, World.chunk_size)
+			).astype(np.uint8).transpose((1, 0, 2))
 
 			# Compute chmin, chmax
 			for y in range(World.height):
@@ -1326,7 +1331,7 @@ class World:
 	active_regions = []
 	file = None
 	region_table = {}
-	file_byte_sizes = (0, 0)
+	bytes_for_block_ID = 0
 
 	coord_array = []
 	coord_array3 = []
@@ -1351,7 +1356,7 @@ class World:
 		World.file = None
 		World.region_table = {}
 		World.regions_to_load = []
-		World.file_byte_sizes = (Save_World.bytesneeded(len(game_blocks)), Save_World.bytesneeded(World.height * (World.chunk_size**2)))
+		World.bytes_for_block_ID = Save_World.bytesneeded(len(game_blocks))
 
 	def load_chunks(ForceLoad=False):
 		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
