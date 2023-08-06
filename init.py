@@ -7,6 +7,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GL.shaders import *
 from ctypes import *
+import opensimplex as noise
 import settings
 
 # Data Types
@@ -462,6 +463,7 @@ class Save_World:
 							lastblock = block
 					write_bytes(counter, BLpos)
 					write_bytes(lastblock, BLblocks)
+				i = savefile.tell()
 					
 
 			UI.buttons["Info"].set_text("World saved successfully!")
@@ -540,6 +542,7 @@ class Load_World:
 				World.seed = struct.unpack("i", readfile.read(4))[0]
 				World.water_level = struct.unpack("i", readfile.read(4))[0]
 				World.heightlim = struct.unpack("2i", readfile.read(8))
+				noise.seed(int(World.seed))
 
 				World.T_res = struct.unpack("2f", readfile.read(8))
 				World.HL_res = struct.unpack("2f", readfile.read(8))
@@ -560,11 +563,15 @@ class Load_World:
 					World.region_table[region_coords] = file_data
 				
 				# Load region where player is
-				region = tuple((player.pos // (World.chunk_size * World.region_size))[[0, 2]])
+				player.chunkpos = player.pos // World.chunk_size
+				region = tuple((player.chunkpos // World.region_size)[[0, 2]])
 				readfile.seek(0, 0)
 				World.file = readfile
+				World.regions[region] = Region(region)
 				Load_World.load_region(region)
 				World.regions_to_load = []
+				player.old_rot = None
+				player.old_pos = None
 
 			elif version in [b"v0.1", b"v0.2"]:
 				UI.buttons["Info"].set_text(
@@ -672,13 +679,10 @@ class Load_World:
 		print(UI.buttons["Info"].get_text())
 
 	def load_region(reg):
-		print(reg)
-		print(World.region_table)
 		if reg not in World.region_table:
 			World.new = True	# To force terrain generation if just loaded world
 			return
-		region = Region(reg)
-		World.regions[reg] = region
+		region = World.regions[reg]
 		readfile = World.file
 		readfile.seek(World.region_table[reg][0])
 		BLch = Save_World.bytesneeded(World.region_size)
@@ -1232,10 +1236,15 @@ class Region:
 		self.loaded_chunks = dict()
 		self.preloaded_data = dict()
 
-	def load_chunks(self, change_pos, change_rot, ForceLoad=False):
-		if tuple(self.pos // World.region_size) in World.regions_to_load:
-			return
-		if change_pos or self.chunk_coords is None or ForceLoad:
+	def load_chunks(self, change_pos, change_rot, force_load=False):
+		reg_pos = tuple(self.pos // World.region_size)
+		if reg_pos in World.regions_to_load:
+			if force_load:
+				Load_World.load_region(reg_pos)
+				World.regions_to_load.remove(reg_pos)
+			else:
+				return
+		if change_pos or self.chunk_coords is None or force_load:
 			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
 			                                         abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1]))
@@ -1251,7 +1260,7 @@ class Region:
 					key = tuple((ch + self.pos).astype(np.int32))
 					if key not in World.chunks_to_generate:
 						World.chunks_to_generate.append(key)
-		if ForceLoad:
+		if force_load:
 			self.in_view = np.full(shape=len(self.chunk_coords), fill_value=True)
 			player.old_rot = None
 		elif change_pos or change_rot:
@@ -1393,6 +1402,8 @@ class World:
 
 	def process_chunk(chunkpos):
 		region, ch = World.get_region(chunkpos)
+		if not region or ch in region.chunks:
+			return
 		chunk = region.chunks[ch]
 		blocks = np.vstack(chunk)
 		chunk_light = region.light[ch]

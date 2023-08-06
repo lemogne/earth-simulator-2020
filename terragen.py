@@ -1,5 +1,4 @@
 from init import *
-import opensimplex as noise
 
 def f(t):
 	return 6 * t**5 - 15 * t**4 + 10 * t**3
@@ -65,7 +64,7 @@ def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
 	heightmap = World.heightmap[coords]
 	region, ch = World.get_region(coords)
-	if region.gen_chunks[ch]:
+	if not region or region.gen_chunks[ch]:
 		return
 
 	# Neighbouring chunks
@@ -192,7 +191,8 @@ def gen_chunks():
 				return
 			time.sleep(0.1)
 		if World.regions_to_load:
-			Load_World.load_region(World.regions_to_load.pop(0))
+			Load_World.load_region(World.regions_to_load[0])
+			World.regions_to_load.pop(0)
 		else:
 			gen_chunk(ch)
 
