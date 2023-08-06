@@ -427,7 +427,8 @@ class Save_World:
 			savefile.write(np.array(World.G_res, dtype=np.float32).tobytes())
 
 			savefile.write(np.array(World.tree_res, dtype=np.float32).tobytes())
-			savefile.write(np.array([World.tree_density_mean, World.tree_density_var, 0, 0, 0], dtype=np.float32).tobytes())
+			savefile.write(np.array([World.tree_density_mean, World.tree_density_var], dtype=np.float32).tobytes())
+			savefile.write(np.array([not World.infinite, 0, 0], dtype=np.int32).tobytes())
 			savefile.write(np.array(len(World.regions), dtype=np.int32).tobytes())
 
 			table_pos = savefile.tell()
@@ -552,7 +553,8 @@ class Load_World:
 				World.tree_res = struct.unpack("2f", readfile.read(8))
 				World.tree_density_mean = struct.unpack("f", readfile.read(4))[0]
 				World.tree_density_var = struct.unpack("f", readfile.read(4))[0]
-				readfile.seek(12, 1)
+				World.infinite = struct.unpack("b", readfile.read(1))[0] == 0
+				readfile.seek(11, 1)
 
 				# Region table
 				region_table_size = struct.unpack("I", readfile.read(4))[0]
@@ -600,6 +602,7 @@ class Load_World:
 
 				# Chunk reading loop (reads until end of block data flag is read)
 				i = 51
+				World.region_table = dict()
 				while data[i:i + 6] != b"\x00\x00\x00\x00\x00\x00":
 					pg.event.get()  #prevents window from freezing
 					ChBuffer = []
@@ -1402,8 +1405,6 @@ class World:
 
 	def process_chunk(chunkpos):
 		region, ch = World.get_region(chunkpos)
-		if not region or ch in region.chunks:
-			return
 		chunk = region.chunks[ch]
 		blocks = np.vstack(chunk)
 		chunk_light = region.light[ch]
