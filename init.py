@@ -1111,8 +1111,8 @@ class Player:
 			sideways = (keystates[pg.K_a] - keystates[pg.K_d])
 			downward = (keystates[pg.K_LSHIFT] - keystates[pg.K_SPACE])
 			if forward and sideways:
-				forward /= 1.41421356237
-				sideways /= 1.41421356237
+				forward *= 0.707106781188
+				sideways *= 0.707106781188
 			accel[0] = forward * self.norm[0] + sideways * self.norm[2]
 			accel[1] = downward * settings.jump_height * (bool(block_under != 0) or self.flying or self.mv[1] == 0)
 			accel[2] = forward * self.norm[2] - sideways * self.norm[0]
@@ -1870,7 +1870,7 @@ def get_schematic(file):
 def get_looked_at():
 
 	def rnd(p, dx):
-		return (dx < 0) * (p // 1) - (dx > 0) * ((-p) // 1) - p
+		return (dx < 0) * np.floor(p) - (dx > 0) * np.floor(-p) - p
 
 	rPos = player.pos + (0, player.height, 0)
 	oPos = rPos
