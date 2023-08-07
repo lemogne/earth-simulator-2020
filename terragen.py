@@ -88,30 +88,25 @@ def gen_chunk(coords):
 
 	# Map of where grass should be (x and z coordinates)
 	terrainmap = (slope[0] <= rockC) & (slope[1] <= rockC) & (slope[2] <= rockC) & (slope[3] <= rockC)
-	heights = World.coord_array3[:, :, :, 1]  # Array of y-values for each block in the chunk
-
-	# Cut-down heightmap copied for each y value
-	current_height = np.transpose(np.tile(heightmap, (World.height, 1, 1)), (1, 0, 2)).astype(np.uint16)
-
-	# Terrain map (of where grass should be) cut down to current chunk and copied for each y value
-	tm = np.transpose(
-		np.tile(
-			terrainmap, (World.height, 1, 1)), (1, 0, 2))
+	heights = World.y_array  # Array of y-values for each block in the chunk
 
 	# Create masks for each generated block type
-	block_map = heights <= current_height
-	water_map = (heights > current_height) & (heights <= World.water_level)
-	surface_map = heights == current_height
-	grass_map = surface_map & (heights > 34) & tm
+	if coords in World.blockmap:
+		block_map = World.blockmap.pop(coords)
+	else:
+		block_map = heights <= heightmap
+	water_map = (heights > heightmap) & (heights <= World.water_level)
+	surface_map = heights == heightmap.astype(np.uint16)
+	grass_map = surface_map & (heights > 34) & terrainmap
 	sand_map = surface_map & (heights < 35)
-	dirt_map = block_map & (heights > (current_height - 3)) & ~surface_map & tm
+	dirt_map = block_map & (heights > (heightmap - 3)) & ~surface_map & terrainmap
 	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
 
 	# Actually generate chunks and calculate lighting
 	chmin = np.min(heightmap) / World.chunk_size
 	region.chunk_min_max[ch] = (chmin, (np.max(heightmap) / World.chunk_size) - chmin)
 	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
-												stone_map).astype(np.uint8)
+												stone_map).astype(np.uint8).transpose(1, 0, 2)
 	region.light[ch] = ((heightmap > World.water_level) * heightmap + (heightmap < World.water_level) * World.water_level)
 
 	trees = gen_trees(coords)
@@ -123,7 +118,7 @@ def gen_chunk(coords):
 	for tree in trees:
 		dim = schematic["tree"][tree[3]][0].shape
 		block_under_tree = World.get_block(tree[:3])
-		if block_under_tree == 0:
+		if block_under_tree == 3:
 			height = World.get_height(tree[[0, 2]])
 			if height < World.water_level:
 				continue
@@ -132,7 +127,7 @@ def gen_chunk(coords):
 			              World.get_height(tree[[0, 2]] - (0, 1)), World.get_height(tree[[0, 2]] + (0, 1))))
 			if ((neighbours - height) > rock_const).any():
 				continue
-		elif block_under_tree not in [2, 3]:
+		elif block_under_tree != 2:
 			continue
 		tree[[0, 2]] -= np.array(coords) * World.chunk_size
 		tree[:3] -= (dim[0] // 2, 0, dim[2] // 2)

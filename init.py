@@ -1325,6 +1325,7 @@ class World:
 	tree_density_var = settings.tree_density_var
 	tree_res = settings.tree_res
 	heightmap = {}
+	blockmap = {}
 	trees = {}
 	regions = {}
 	regions_to_load = []
@@ -1509,7 +1510,14 @@ class World:
 		if region and ch in region.chunks.keys():
 			return region.chunks[ch]
 		else:
-			return np.zeros((World.chunk_size, World.height, World.chunk_size))
+			chunk = np.zeros((World.chunk_size, World.height, World.chunk_size))
+			if World.infinite:
+				chunk[:, :World.water_level, :] = 8
+				if coords in World.heightmap:
+					blockmap = (World.y_array <= World.heightmap[coords])
+					chunk[blockmap.transpose(1, 0, 2)] = 3
+					World.blockmap[coords] = blockmap
+			return chunk
 
 	def get_height(coords):
 		chunk = tuple(coords // World.chunk_size)
@@ -1657,7 +1665,7 @@ def make_coord_array():
 			World.coord_array[i].append([])
 			for k in range(World.chunk_size):
 				World.coord_array[i][j].append((i, j, k))
-	World.coord_array3 = np.array(World.coord_array)
+	World.y_array = np.array(World.coord_array)[:, :, :, 1].transpose(1, 0, 2)
 	World.coord_array = np.vstack(World.coord_array)
 
 
