@@ -275,6 +275,7 @@ class UI:
 				          (box[0] * settings.button_scale - 0.1)[1]), 0.05)
 
 	def type_button(name, var, type_):
+		# TODO: decouple from Settings
 		UI.buttons.set_input_button(name)
 		UI.buttons[name].set_text(UI.input_text(UI.buttons[name].get_text()))
 		if not UI.buttons.is_typing():
@@ -1635,7 +1636,7 @@ class World:
 			return 0
 		coords = np.array(coords)
 		chunk_data = World.chunk_data(tuple(coords[[0, 2]] // World.chunk_size))
-		xyz = coords.astype(np.int32)
+		xyz = np.floor(coords).astype(np.int32)
 		xyz[[0, 2]] %= World.chunk_size
 		return chunk_data[tuple(xyz)]
 
