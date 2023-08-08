@@ -16,9 +16,13 @@ INT = 2
 FLOAT = 3
 DOUBLE = 4
 
-types = [(np.uint8, GL_BYTE, c_ubyte, 1, 127), (np.uint16, GL_SHORT, c_ushort, 2, 32767),
-         (np.uint32, GL_INT, c_uint32, 4, 2147483647), (np.float32, GL_FLOAT, c_float, 4, 1),
-         (np.float64, GL_DOUBLE, c_double, 8, 1)]
+types = [
+	(np.uint8,   GL_BYTE,   c_ubyte,  1,        127),
+	(np.uint16,  GL_SHORT,  c_ushort, 2,      32767),
+	(np.uint32,  GL_INT,    c_uint32, 4, 2147483647),
+	(np.float32, GL_FLOAT,  c_float,  4,          1),
+	(np.float64, GL_DOUBLE, c_double, 8,          1)
+]
 
 if settings.gpu_data_type == None:
 	size = max(settings.chunk_size, settings.world_height)
@@ -227,7 +231,7 @@ class UI:
 		return variable + "_"
 
 	def check_hover(m_pos):
-		m_posGL = ((m_pos[0] - Display.centre[0]) / Display.centre[0],
+		m_posGL = (( m_pos[0] - Display.centre[0]) / Display.centre[0],
 		           (-m_pos[1] + Display.centre[1]) / Display.centre[1])
 		for button_ in UI.buttons:
 			button = UI.buttons[button_]
@@ -1187,17 +1191,24 @@ class Player:
 			if not mouse_pos == Display.centre:
 				m_x = mouse_pos[0] - Display.centre[0]
 				m_y = Display.centre[1] - mouse_pos[1]
-				rv = np.array((max(min((m_y * settings.mouse_sensitivity), 90 - self.rot[0]), -90 - self.rot[0]),
-				            (m_x * settings.mouse_sensitivity), 0))
+				rv = np.array((
+					max(
+						min(m_y * settings.mouse_sensitivity, 90 - self.rot[0]), 
+						-90 - self.rot[0]
+					),
+					m_x * settings.mouse_sensitivity, 0
+				))
 				self.rot += rv
 				pg.mouse.set_pos(Display.centre)
 			else:
 				rv = np.array((0.0, 0.0, 0.0))
 
 			# norm is the normal vector of the culling plane, also the 'forward' vector
-			self.norm = np.array((-settings.movement_speed * math.sin(math.radians(self.rot[1])),
-			                   -settings.movement_speed * math.tan(math.radians(self.rot[0])),
-			                   settings.movement_speed * math.cos(math.radians(self.rot[1]))))
+			self.norm = np.array((
+				-settings.movement_speed * math.sin(math.radians(self.rot[1])),
+				-settings.movement_speed * math.tan(math.radians(self.rot[0])),
+				 settings.movement_speed * math.cos(math.radians(self.rot[1]))
+			))
 
 
 player = Player()
@@ -1255,8 +1266,10 @@ class Region:
 				return
 		if change_pos or self.chunk_coords is None or force_load:
 			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
-			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
-			                                         abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1]))
+			chunk_distance = settings.chunk_distance(
+				abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
+				abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1])
+			)
 			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
 			gen_status = self.gen_chunks[chunk_distance <= settings.render_distance]
 			if World.infinite:
@@ -1386,18 +1399,24 @@ class World:
 		counter = chunkdata[0][1]
 		vbo = glGenBuffers(1)
 		glBindBuffer(GL_ARRAY_BUFFER, vbo)
-		glBufferData(GL_ARRAY_BUFFER,
-		             len(vert_tex_list) * types[settings.gpu_data_type][3],
-		             (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), GL_STATIC_DRAW)
+		glBufferData(
+			GL_ARRAY_BUFFER,
+			len(vert_tex_list) * types[settings.gpu_data_type][3],
+			(types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list),
+			GL_STATIC_DRAW
+		)
 
 		if chunkdata[1] != None:
 			vert_tex_list = chunkdata[1][0]
 			counter_transp = chunkdata[1][1]
 			vbo_transp = glGenBuffers(1)
 			glBindBuffer(GL_ARRAY_BUFFER, vbo_transp)
-			glBufferData(GL_ARRAY_BUFFER,
-			             len(vert_tex_list) * types[settings.gpu_data_type][3],
-			             (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), GL_STATIC_DRAW)
+			glBufferData(
+				GL_ARRAY_BUFFER,
+				len(vert_tex_list) * types[settings.gpu_data_type][3],
+				(types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), 
+				GL_STATIC_DRAW
+			)
 			return ((vbo, counter), (vbo_transp, counter_transp))
 		return ((vbo, counter), None)
 
@@ -1447,8 +1466,11 @@ class World:
 			# the remainder we turn into vertex and texture data
 			neighbours[i] = np.vstack(neighbours[i]).astype(int)
 			light_neighb = np.vstack(
-			    np.reshape(np.tile(neighbours_light[i], World.height),
-			               (World.chunk_size, World.height, World.chunk_size)))
+				np.reshape(
+					np.tile(neighbours_light[i], World.height), 
+					(World.chunk_size, World.height, World.chunk_size)
+				)
+			)
 			neighb_transp = seethrough[neighbours[i]]
 
 			blocks_transp = blocks[neighb_transp]
@@ -1483,9 +1505,17 @@ class World:
 				verts.append(c_show_r + cube_verts - (128, 128, 128))
 				tex_verts.append(np.vstack(Textures.game_blocks[blocks_show, 6 * i:6 * i + 6]))
 				normals.append(
-				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(coords_show), 1)) * np.tile(
-				        np.repeat(((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
-				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
+				    np.tile(
+						types[settings.gpu_data_type][4] * Cube.normals[i], 
+						(6 * len(coords_show), 1)
+					) * np.tile(
+						np.repeat(
+							((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
+							(settings.shadow_brightness + 1), 6
+						), 
+						(3, 1)
+					).T
+				)
 
 				counter += len(coords_show) * 6
 			if len(coords_show_transp) > 0:
@@ -1495,17 +1525,36 @@ class World:
 				transp_verts.append(c_show_r + cube_verts - (128, 128, 128))
 				transp_tex_verts.append(np.vstack(Textures.game_blocks[blocks_show_transp, 6 * i:6 * i + 6]))
 				transp_normals.append(
-				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(coords_show_transp), 1)) * np.tile(
-				        np.repeat(((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
-				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
+					np.tile(
+						types[settings.gpu_data_type][4] * Cube.normals[i], 
+						(6 * len(coords_show_transp), 1)
+					) * np.tile(
+						np.repeat(
+							((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
+							(settings.shadow_brightness + 1), 6
+						), 
+						(3, 1)
+					).T
+				)
 
 				counter_transp += len(coords_show_transp) * 6
-		vert_tex_list = np.ravel(np.column_stack(
-		    (np.vstack(verts), np.vstack(tex_verts), np.vstack(normals)))).astype(types[settings.gpu_data_type][0])
+		vert_tex_list = np.ravel(
+			np.column_stack((
+				np.vstack(verts), 
+				np.vstack(tex_verts), 
+				np.vstack(normals)
+			))
+		).astype(types[settings.gpu_data_type][0])
+
 		if counter_transp != 0:
 			vert_tex_transp = np.ravel(
-			    np.column_stack((np.vstack(transp_verts), np.vstack(transp_tex_verts),
-			                     np.vstack(transp_normals)))).astype(types[settings.gpu_data_type][0])
+			    np.column_stack((
+					np.vstack(transp_verts), 
+					np.vstack(transp_tex_verts),
+					np.vstack(transp_normals)
+				))
+			).astype(types[settings.gpu_data_type][0])
+
 			return ((vert_tex_list, counter), (vert_tex_transp, counter_transp))
 		return ((vert_tex_list, counter), None)
 
@@ -1531,18 +1580,26 @@ class World:
 		return World.heightmap[chunk][local_coords]
 
 	def chunk_in_view(chunk, y_lims):
-		left_v = np.array((-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
-		               player.norm[1],
-		               -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2))))
-		right_v = np.array((settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
-		                player.norm[1],
-		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2))))
-		top_v = np.array((player.norm[0],
-		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fov_Y))),
-		              player.norm[2]))
-		bottom_v = np.array((player.norm[0],
-		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fov_Y))),
-		                 player.norm[2]))
+		left_v = np.array((
+			-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
+		    player.norm[1],
+		    -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2))
+		))
+		right_v = np.array((
+			settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
+			player.norm[1],
+			settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2))
+		))
+		top_v = np.array((
+			player.norm[0],
+			settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fov_Y))),
+			player.norm[2]
+		))
+		bottom_v = np.array((
+			player.norm[0],
+			settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fov_Y))),
+			player.norm[2]
+		))
 		frustum = (left_v, right_v, top_v, bottom_v)
 		in_frustum = True
 		for plane in frustum:
@@ -1551,8 +1608,15 @@ class World:
 				a = i >> 2
 				b = (i >> 1) & 1
 				c = i & 1
-				point = (np.array((chunk[:, 0] + a, y_lims[:, 0] + y_lims[:, 1] * b, chunk[:, 1] + c)).T -
-				         ((player.pos + (0, player.height, 0)) / World.chunk_size))
+				point = (
+					np.array((
+						chunk [:, 0] + a, 
+						y_lims[:, 0] + y_lims[:, 1] * b, 
+						chunk [:, 1] + c
+					)).T - (
+						(player.pos + (0, player.height, 0)) / World.chunk_size
+					)
+				)
 				all_inside |= point @ plane < 0
 			in_frustum &= all_inside
 		return in_frustum
@@ -1569,8 +1633,11 @@ class World:
 			return None
 		if not World.height > coords[1] > 0:
 			return 0
-		return World.chunk_data((coords[0] // World.chunk_size, coords[2] // World.chunk_size))[math.floor(
-		    coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(coords[2] % World.chunk_size)]
+		coords = np.array(coords)
+		chunk_data = World.chunk_data(tuple(coords[[0, 2]] // World.chunk_size))
+		xyz = coords.astype(np.int32)
+		xyz[[0, 2]] %= World.chunk_size
+		return chunk_data[tuple(xyz)]
 
 	def update_chunk(coords):
 		region, ch = World.get_region(coords)
@@ -1699,17 +1766,25 @@ class Display:
 		else:
 			Display.size = size
 		Display.fovX = math.degrees(
-		    2 * math.atan(math.tan(math.radians(settings.fov_Y / 2)) * (Display.size[0] / Display.size[1])))
+		    2 * math.atan(math.tan(
+				math.radians(settings.fov_Y / 2)) * (Display.size[0] / Display.size[1]
+			))
+		)
 		Display.centre = (Display.size[0] // 2, Display.size[1] // 2)
 
-		Display.screen = pg.display.set_mode(Display.size, (FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL
-		                                     | (pg.RESIZABLE * settings.resizeable))
+		Display.screen = pg.display.set_mode(
+			Display.size, 
+			(FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL | (pg.RESIZABLE * settings.resizeable)
+		)
 		glMatrixMode(GL_PROJECTION)
 		glLoadIdentity()
 		glMatrixMode(GL_MODELVIEW)
 		glLoadIdentity()
-		gluPerspective(settings.fov_Y, (Display.size[0] / Display.size[1]), 0.1,
-		               settings.render_distance * 3**0.5 * World.chunk_size)
+		gluPerspective(
+			settings.fov_Y, 
+			(Display.size[0] / Display.size[1]), 0.1,
+		    settings.render_distance * 3**0.5 * World.chunk_size
+		)
 		player.rot = np.array((0.0, 0.0, 0.0))
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 		glEnable(GL_BLEND)
@@ -1744,8 +1819,9 @@ class Textures:
 		Textures.cursor = Textures.load("cursor.png")
 
 		title_size = (Textures.title[1].get_width(), Textures.title[1].get_height())
-		Textures.text_ratio = Textures.text[1].get_width() * (Textures.texttable_height /
-		                                                      16) / Textures.text[1].get_height()
+		Textures.text_ratio = Textures.text[1].get_width() * (
+			Textures.texttable_height / 16
+		) / Textures.text[1].get_height()
 		TSR = title_size[1] / title_size[0]
 		Textures.title_coords = character_coords * np.array([TSR * (Display.centre[0] / Display.centre[1]), 1])
 		logo_size = (Textures.logo[1].get_width(), Textures.logo[1].get_height())
@@ -1760,8 +1836,10 @@ class Textures:
 		Textures.pixel_size = 2 * Textures.text[1].get_height() / (Display.size[1] * Textures.texttable_height)
 
 	def generate(blocks):
-		Face = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1], [0, 1, 1, 1, 2, 2], [0, 1, 1, 1, 2, 3],
-		                 [0, 1, 2, 2, 3, 4], [0, 1, 2, 3, 4, 5]])
+		Face = np.array([
+			[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1], [0, 1, 1, 1, 2, 2], 
+			[0, 1, 1, 1, 2, 3], [0, 1, 2, 2, 3, 4], [0, 1, 2, 3, 4, 5]
+		])
 		tex_array = []
 		for block in blocks:
 			cube_sides = np.tile(Cube.sides, (6, 1))
@@ -1780,8 +1858,10 @@ class Textures:
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY)
 		texid = glGenTextures(1)
 		glBindTexture(GL_TEXTURE_2D, texid)
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_surface.get_width(), texture_surface.get_height(), 0, GL_RGBA,
-					GL_UNSIGNED_BYTE, texture_data)
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGBA, texture_surface.get_width(), 
+			texture_surface.get_height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data
+		)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter)
@@ -1789,10 +1869,16 @@ class Textures:
 		return (texid, texture_surface)
 
 class Sky:
-	triangles = ((2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5), (6, 8, 4), (9, 6, 4), (8, 7, 4), (7, 9, 4), (6, 2, 8),
-	             (6, 0, 2), (9, 0, 6), (9, 3, 0), (8, 1, 7), (8, 2, 1), (7, 3, 9), (7, 1, 3))
-	vertices = ((-1, 1, -1), (1, 1, 1), (-1, 1, 1), (1, 1, -1), (0, -1, 0), (0, 4 / 3, 0), (-1, 0, -1), (1, 0, 1),
-	            (-1, 0, 1), (1, 0, -1))
+	triangles = (
+		(2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5),
+		(6, 8, 4), (9, 6, 4), (8, 7, 4), (7, 9, 4),
+		(6, 2, 8), (6, 0, 2), (9, 0, 6), (9, 3, 0),
+		(8, 1, 7), (8, 2, 1), (7, 3, 9), (7, 1, 3)
+	)
+	vertices = (
+		(-1, 1, -1), (1, 1, 1), (-1, 1, 1), (1, 1, -1), (0, -1, 0), 
+		(0, 4 / 3, 0), (-1, 0, -1), (1, 0, 1), (-1, 0, 1), (1, 0, -1)
+	)
 	vert_list = np.array(vertices)[np.array(triangles).ravel()]
 	normals = np.zeros(len(vert_list))
 
@@ -1800,8 +1886,11 @@ class Sky:
 		t = 0.05
 		b = 0.95
 		m = (2 * t + b) / 3
-		Sky.tex_list = np.array([(0, m), (0, m), (0, t)] * 4 + [(0, b), (0, b), (0, b)] * 4 +
-		                        [(0, b), (0, m), (0, b), (0, b), (0, m), (0, m)] * 4)
+		Sky.tex_list = np.array(
+			[(0, m), (0, m), (0, t)] * 4 + 
+			[(0, b), (0, b), (0, b)] * 4 +
+			[(0, b), (0, m), (0, b), (0, b), (0, m), (0, m)] * 4
+		)
 
 	def get_tex():
 		tempS = Sky.texture_offset(World.game_time)
