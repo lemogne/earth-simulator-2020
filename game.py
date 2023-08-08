@@ -1,4 +1,5 @@
 from render_blocks import *
+from threading import Thread
 import menu, terragen
 
 while 1:
