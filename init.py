@@ -1438,58 +1438,49 @@ class World:
 			# Basically, for each of the 6 possible faces of all cubes, we filter out all those, whose neighbour is not air;
 			# the remainder we turn into vertex and texture data
 			neighbours[i] = np.vstack(neighbours[i]).astype(int)
-			lnb = np.vstack(
+			light_neighb = np.vstack(
 			    np.reshape(np.tile(neighbours_light[i], World.height),
 			               (World.chunk_size, World.height, World.chunk_size)))
-			nbWater = neighbours[i] == 8
-			nb_transp = seethrough[neighbours[i]]
-			bWater = blocks[nbWater]
-			cWater = World.coord_array[nbWater]
-			lWater = lnb[nbWater]
+			neighb_transp = seethrough[neighbours[i]]
 
-			b_transp = blocks[nb_transp]
-			c_transp = World.coord_array[nb_transp]
-			l_transp = lnb[nb_transp]
+			blocks_transp = blocks[neighb_transp]
+			coords_transp = World.coord_array[neighb_transp]
+			light_transp = light_neighb[neighb_transp]
 
-			SMask = ~seethrough[b_transp]
-			bShow = b_transp[SMask]  # Solid blocks
-			cShow = c_transp[SMask]
-			lShow = l_transp[SMask]
+			solid_mask = ~seethrough[blocks_transp]
+			blocks_show = blocks_transp[solid_mask]  # Solid blocks
+			coords_show = coords_transp[solid_mask]
+			light_show = light_transp[solid_mask]
 
-			TMask1 = seethrough[blocks] & (blocks != neighbours[i])
-			cShow_transp = World.coord_array[TMask1]
-			bShow_transp = blocks[TMask1]
-			lShow_transp = lnb[TMask1]
+			transp_mask = seethrough[blocks] & (blocks != neighbours[i])
+			coords_show_transp = World.coord_array[transp_mask]
+			blocks_show_transp = blocks[transp_mask]
+			light_show_transp = light_neighb[transp_mask]
 
-			# Water blocks, also air blocks bordering on water (so that you can see water surface from below)
-			cShow_transp = np.concatenate((cShow_transp[bShow_transp != 0], cWater[bWater == 0]), 0)
-			lShow_transp = np.concatenate((lShow_transp[bShow_transp != 0], lWater[bWater == 0]), 0)
-			bShow_transp = np.concatenate((bShow_transp[bShow_transp != 0], bWater[bWater == 0]), 0)
+			if len(coords_show) > 0:
+				c_show_r = np.repeat(coords_show, 6, 0)
+				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(coords_show), 1))
 
-			if len(cShow) > 0:
-				cShowR = np.repeat(cShow, 6, 0)
-				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(cShow), 1))
-
-				verts.append(cShowR + cube_verts - (128, 128, 128))
-				tex_verts.append(np.vstack(Textures.game_blocks[bShow, 6 * i:6 * i + 6]))
+				verts.append(c_show_r + cube_verts - (128, 128, 128))
+				tex_verts.append(np.vstack(Textures.game_blocks[blocks_show, 6 * i:6 * i + 6]))
 				normals.append(
-				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(cShow), 1)) * np.tile(
-				        np.repeat(((lShow <= cShow[:, 1]) + settings.shadow_brightness) /
+				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(coords_show), 1)) * np.tile(
+				        np.repeat(((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
 				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
 
-				counter += len(cShow) * 6
-			if len(cShow_transp) > 0:
-				cShowR = np.repeat(cShow_transp, 6, 0)
-				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(cShow_transp), 1))
+				counter += len(coords_show) * 6
+			if len(coords_show_transp) > 0:
+				c_show_r = np.repeat(coords_show_transp, 6, 0)
+				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(coords_show_transp), 1))
 
-				transp_verts.append(cShowR + cube_verts - (128, 128, 128))
-				transp_tex_verts.append(np.vstack(Textures.game_blocks[bShow_transp, 6 * i:6 * i + 6]))
+				transp_verts.append(c_show_r + cube_verts - (128, 128, 128))
+				transp_tex_verts.append(np.vstack(Textures.game_blocks[blocks_show_transp, 6 * i:6 * i + 6]))
 				transp_normals.append(
-				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(cShow_transp), 1)) * np.tile(
-				        np.repeat(((lShow_transp <= cShow_transp[:, 1]) + settings.shadow_brightness) /
+				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(coords_show_transp), 1)) * np.tile(
+				        np.repeat(((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
 				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
 
-				counter_transp += len(cShow_transp) * 6
+				counter_transp += len(coords_show_transp) * 6
 		vert_tex_list = np.ravel(np.column_stack(
 		    (np.vstack(verts), np.vstack(tex_verts), np.vstack(normals)))).astype(types[settings.gpu_data_type][0])
 		if counter_transp != 0:
@@ -1599,9 +1590,9 @@ class World:
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		region, ch = World.get_region(ch)
 
-		currentLight = math.floor(region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
+		current_light = math.floor(region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
 		    coords[2] % World.chunk_size)])
-		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == currentLight:
+		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == current_light:
 			h = math.floor(coords[1]) - 1
 			while World.get_block((coords[0], h, coords[2])) == 0:
 				if h < 0:
@@ -1609,7 +1600,7 @@ class World:
 				h -= 1
 			else:
 				region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)] = h
-		elif block != 0 and coords[1] > currentLight:
+		elif block != 0 and coords[1] > current_light:
 			region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
 			                                                                     World.chunk_size)] = coords[1]
 		region.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
@@ -1874,18 +1865,18 @@ def get_looked_at():
 	def rnd(p, dx):
 		return (dx < 0) * np.floor(p) - (dx > 0) * np.floor(-p) - p
 
-	rPos = player.pos + (0, player.height, 0)
-	oPos = rPos
+	r_pos = player.pos + (0, player.height, 0)
+	o_pos = r_pos
 	dt = 0
 	nm = np.array(-player.norm)
 	invnm = 1 / nm
-	while np.linalg.norm(rPos - (player.pos + (0, player.height, 0))) <= settings.hand_reach:
-		if World.get_block(rPos) not in [0, 8]:
-			return (rPos, oPos)
-		minim = rnd(np.array(rPos), nm) * invnm
+	while np.linalg.norm(r_pos - (player.pos + (0, player.height, 0))) <= settings.hand_reach:
+		if World.get_block(r_pos) not in [0, 8]:
+			return (r_pos, o_pos)
+		minim = rnd(np.array(r_pos), nm) * invnm
 		dt = float(min(minim[minim != 0]))
-		oPos = rPos + (0, 0, 0)
-		rPos -= dt * 1.1 * player.norm
+		o_pos = r_pos + (0, 0, 0)
+		r_pos -= dt * 1.1 * player.norm
 	return (None, None)
 
 
