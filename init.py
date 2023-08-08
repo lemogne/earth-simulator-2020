@@ -1137,6 +1137,16 @@ class Player:
 			# MOVEMENT
 			self.chunkpos = self.pos // World.chunk_size
 
+	def not_in_hitbox(self, block):
+		"""Checks if block at given location is not in hitbox of player."""
+		hitbox_min = self.pos - (settings.player_width, 0, settings.player_width)
+		hitbox_max = self.pos + (settings.player_width, settings.player_height, settings.player_width)
+		block_min = np.floor(block)
+		block_max = block_min + 1
+
+		return ((hitbox_max < block_min) | (block_max < hitbox_min)).any()
+
+
 	def check_in_block(self, dim, dt, mv, pos):
 		# TODO: optimise!!!
 		hitbox_min = pos - (settings.player_width, 0, settings.player_width)
