@@ -104,7 +104,7 @@ def gen_chunk(coords):
 	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
 
 	# Actually generate chunks and calculate lighting
-	chmin = max(np.min(heightmap_int), World.water_level) / World.chunk_size
+	chmin = np.min(heightmap_int) / World.chunk_size
 	region.chunk_min_max[ch] = (chmin, (np.max(heightmap_int) / World.chunk_size) - chmin)
 	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
 												stone_map).astype(np.uint8).transpose(1, 0, 2)
