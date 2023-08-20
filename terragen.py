@@ -20,7 +20,7 @@ def gen_trees(coords):
 			k = np.arange(int(n))
 			x = (noise.noise2array(i + 64324.4 - 434.23 * k, np.array((j + 728491.2,))) + 1) / 2
 			z = (noise.noise2array(np.array((i - 46324.4,)), j - 278491.2 + 1874.283 * k).T + 1) / 2
-			tree_type = noise.noise2array(i - 2361.53 + 71834.23 * k, np.array((j - 94829.4,))) > 0
+			tree_type = ((noise.noise2array(i - 2361.53 + 71834.23 * k, np.array((j - 94829.4,))) + 1) / 2 * len(schematic["tree"])).astype(np.uint32)
 			x = (f(x) * settings.chunk_size).astype(np.int64)
 			z = (f(z) * settings.chunk_size).astype(np.int64)
 			y = World.heightmap[(i, j)][x, z].astype(np.int64)
@@ -131,7 +131,7 @@ def gen_chunk(coords):
 		elif block_under_tree != 2:
 			continue
 		tree[[0, 2]] -= np.array(coords) * World.chunk_size
-		tree[:3] -= (dim[0] // 2, 0, dim[2] // 2)
+		tree[:3] -= schematic["tree"][tree[3]][2]
 		min_x = max(-tree[0], 0)
 		max_x = min(dim[0], World.chunk_size - tree[0])
 		min_z = max(-tree[2], 0)

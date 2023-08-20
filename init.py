@@ -1971,8 +1971,9 @@ def compute_lighting(blocks):
 
 def get_schematic(file):
 	raw_json = open(f"schematics/{settings.schematic_pack}/{file}.json").read()
-	schem = np.array(json.loads(raw_json))
-	return (schem, compute_lighting(schem))
+	schem = json.loads(raw_json)
+	schem_blocks = np.array(schem[0])
+	return (schem_blocks, compute_lighting(schem_blocks), np.array(schem[1]))
 
 
 def get_looked_at():
