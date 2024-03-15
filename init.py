@@ -1382,7 +1382,7 @@ class World:
 		World.regions_to_load = []
 		World.bytes_for_block_ID = Save_World.bytesneeded(len(game_blocks))
 
-	def load_chunks(ForceLoad=False):
+	def load_chunks(ForceLoad = False):
 		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
 		reg_min = (player.chunkpos - settings.render_distance) // World.region_size
 		change_pos = (player.old_chunkpos != player.chunkpos).any()
