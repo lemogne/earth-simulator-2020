@@ -47,10 +47,10 @@ while 1:
 										
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
-			render_sky(Time.start)
 			glPushMatrix()
 			glRotatef(player.rot[1], 0, 1, 0)
 			glRotatef(player.rot[0], -player.norm[2], 0, player.norm[0])
+			render_sky(Time.start)
 			glTranslatef(-temp_pos[0], -temp_pos[1] - player.height, -temp_pos[2])
 			render(chat_string)
 			glPopMatrix()
