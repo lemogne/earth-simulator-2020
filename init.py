@@ -1274,8 +1274,8 @@ class Region:
 		if change_pos or self.chunk_coords is None or force_load:
 			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(
-				abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
-				abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1])
+				(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
+				abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1]))
 			)
 			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
 			gen_status = self.gen_chunks[chunk_distance <= settings.render_distance]
@@ -1310,6 +1310,7 @@ class Region:
 					self.to_be_loaded.append(ch)
 			else:
 				self.loaded_chunks[ch] = self.preloaded_chunks[ch]
+		self.to_be_loaded = sorted(self.to_be_loaded, key=lambda x: settings.chunk_distance(x - player.chunkpos[[0, 2]]))
 		
 
 	# TODO: possible error: sudden jump in y level between neighbouring chunks
