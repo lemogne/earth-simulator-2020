@@ -45,7 +45,7 @@ while 1:
 
 				collision_check(temp_pos, ds, delta_t)
 										
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+			glClear(GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
 			glPushMatrix()
 			glRotatef(player.rot[1], 0, 1, 0)

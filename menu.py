@@ -28,7 +28,7 @@ def run():
 				glEnd()
 
 			UI.render_buttons()
-			UI.write("v0.3", (0.875, -0.98), 0.05, color=(1, 1, 1))
+			UI.write("v0.4", (0.875, -0.98), 0.05, color=(1, 1, 1))
 			glBindTexture(GL_TEXTURE_2D, Textures.title[0])
 			pg.display.flip()
 
