@@ -7,7 +7,7 @@ region_size = 32
 infinite = True
 
 #WORLD GENERATION
-heightlim = (10, 110)
+heightlim = (20, 110)
 T_res = (16, 16)
 HL_res = (64, 64)
 G_res = (256, 256)		
@@ -23,7 +23,7 @@ water_level = 33
 render_distance = 30
 ticks_per_second = 15
 max_FPS = 60
-min_FPS = 60
+min_FPS = 30
 nominal_res = (1205, 720)
 fullscreen = False		
 fov_Y = 60

@@ -1443,9 +1443,12 @@ class World:
 
 	def get_hum_temp(latitude, y):
 		# 3 * π ≈ 9.425
+		a = 3.5
+		b = 0.8
+		c = 0.9
 		hum = (np.cos(9.425 * latitude) + 1) * ( -latitude**2 + 1) / 2
-		temp = np.exp(-(3 * latitude + 1)**2) + np.exp(-(3 * latitude - 1)**2) - (y - 40) / 200
-		return np.column_stack((hum, temp)) * types[settings.gpu_data_type][4]
+		temp = c * (np.exp(-(a * latitude + b)**2) + np.exp(-(a * latitude - b)**2)) - (y - 40) / 200
+		return np.clip(np.column_stack((hum, temp)), 0, 1) * types[settings.gpu_data_type][4]
 
 	def process_chunk(chunkpos):
 		region, ch = World.get_region(chunkpos)
@@ -1863,7 +1866,7 @@ class Textures:
 		Textures.logo = Textures.load("logo.png")
 		Textures.title = Textures.load("title.png")
 		Textures.cursor = Textures.load("cursor.png")
-		Textures.biomes = Textures.load("biomes.png", GL_LINEAR)
+		Textures.biomes = Textures.load("biomes.png", GL_LINEAR, GL_CLAMP_TO_EDGE)
 
 		title_size = (Textures.title[1].get_width(), Textures.title[1].get_height())
 		Textures.text_ratio = Textures.text[1].get_width() * (
@@ -1896,7 +1899,7 @@ class Textures:
 			tex_array.append(cube_sides + block_textures)
 		return np.array(tex_array)
 
-	def load(file, filter = GL_NEAREST):
+	def load(file, filter = GL_NEAREST, clamping = GL_REPEAT):
 		texture_surface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
 		texture_data = pg.image.tostring(texture_surface, "RGBA", 1)
 
@@ -1909,8 +1912,8 @@ class Textures:
 			GL_TEXTURE_2D, 0, GL_RGBA, texture_surface.get_width(), 
 			texture_surface.get_height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data
 		)
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamping)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clamping)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter)
 		return (texid, texture_surface)

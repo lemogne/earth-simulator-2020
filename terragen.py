@@ -70,11 +70,14 @@ def gen_heightmaps(coord_list):
 		heightmap = (heightmap * (World.heightlim[1] - World.heightlim[0]) + World.heightlim[0])
 		World.heightmap[t_coords] = heightmap
 
+		#World.biomemap[t_coords] = np.sin(1.57 * noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87))
 		World.biomemap[t_coords] = noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87)
 
 def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
 	heightmap = World.heightmap[coords]
+	biomemap = World.biomemap[coords]
+	hummap = World.get_hum_temp(biomemap, heightmap).reshape((World.chunk_size, 2, World.chunk_size)) / types[settings.gpu_data_type][4]
 	region, ch = World.get_region(coords)
 	if not region or region.gen_chunks[ch]:
 		return
@@ -111,15 +114,30 @@ def gen_chunk(coords):
 	water_map = (heights > heightmap) & (heights <= World.water_level)
 	surface_map = heights == heightmap_int
 	grass_map = surface_map & (heights > World.water_level + 1) & terrainmap
-	sand_map = surface_map & (heights < World.water_level + 2)
+	desert_map = (hummap[:, 0, :] < 0.33) & (hummap[:, 1, :] > 0.67)
+	cold_map = (hummap[:, 1, :] < 0.2)
+	snow_map = grass_map & cold_map
+	grass_map &= ~desert_map & ~cold_map
+	ice_map = water_map & (heights == World.water_level) & cold_map
+	water_map &= ~ice_map
+	sand_map = surface_map & ((heights < World.water_level + 2) | desert_map)
 	dirt_map = block_map & (heights > (heightmap - 3)) & ~surface_map & terrainmap
-	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
+	sand_map |= dirt_map & desert_map
+	dirt_map &= ~desert_map
+	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map & ~snow_map
 
 	# Actually generate chunks and calculate lighting
 	chmin = np.min(heightmap_int) / World.chunk_size
 	region.chunk_min_max[ch] = (chmin, (np.max(heightmap_int) / World.chunk_size) - chmin)
-	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
-												stone_map).astype(np.uint8).transpose(1, 0, 2)
+	region.chunks[ch] = (
+	     8 * water_map \
+	  +  2 * grass_map \
+	  +  9 * sand_map \
+	  +  3 * dirt_map \
+	  +  1 * stone_map \
+	  + 13 * snow_map \
+	  + 14 * ice_map
+	).astype(np.uint8).transpose(1, 0, 2)
 	region.light[ch] = ((heightmap_int > World.water_level) * heightmap_int + (heightmap_int < World.water_level) * World.water_level)
 
 	trees = gen_trees(coords)
@@ -131,7 +149,7 @@ def gen_chunk(coords):
 	for tree in trees:
 		dim = schematic["tree"][tree[3]][0].shape
 		block_under_tree = World.get_block(tree[:3])
-		if block_under_tree == 3:
+		if block_under_tree in [3, 13]:
 			height = World.get_height(tree[[0, 2]])
 			if height < World.water_level:
 				continue
