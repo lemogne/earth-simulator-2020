@@ -13,9 +13,12 @@ def highlight_block(position):
 def render_chunk(chunkData):
 	s = types[settings.gpu_data_type][3]
 	glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])
-	glTexCoordPointer(2, types[settings.gpu_data_type][1], 8 * s, (c_void_p)(3 * s))
-	glVertexPointer(3, types[settings.gpu_data_type][1], 8 * s, None)
-	glNormalPointer(types[settings.gpu_data_type][1], 8 * s, (c_void_p)(5 * s))
+	glTexCoordPointer(2, types[settings.gpu_data_type][1], 10 * s, (c_void_p)(3 * s))
+	glClientActiveTexture(GL_TEXTURE1)
+	glTexCoordPointer(2, types[settings.gpu_data_type][1], 10 * s, (c_void_p)(5 * s))
+	glClientActiveTexture(GL_TEXTURE0)
+	glVertexPointer(3, types[settings.gpu_data_type][1], 10 * s, None)
+	glNormalPointer(types[settings.gpu_data_type][1], 10 * s, (c_void_p)(7 * s))
 	glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
 
 def render_sky(time_start):
@@ -47,6 +50,16 @@ def render(chat_string):
 	glMatrixMode(GL_MODELVIEW)
 	glPushMatrix()
 	glTranslatef(128, 128, 128)
+
+	glActiveTexture(GL_TEXTURE1)
+	glClientActiveTexture(GL_TEXTURE1)
+	glEnable(GL_TEXTURE_COORD_ARRAY)
+	glBindTexture(GL_TEXTURE_2D, Textures.biomes[0])
+	biomeSampler = glGetUniformLocation(day_night_shader, "u_biome")
+	glUniform1i(biomeSampler, 1)
+	glClientActiveTexture(GL_TEXTURE0)
+	glActiveTexture(GL_TEXTURE0)
+
 	for reg in World.active_regions:
 		for loaded_chunk in reg.loaded_chunks:
 			glPushMatrix()
@@ -65,6 +78,14 @@ def render(chat_string):
 				glPopMatrix()
 	
 	glPopMatrix()
+
+	glActiveTexture(GL_TEXTURE1)
+	glClientActiveTexture(GL_TEXTURE1)
+	glBindTexture(GL_TEXTURE_2D, 0)
+	glDisable(GL_TEXTURE_COORD_ARRAY)
+	glClientActiveTexture(GL_TEXTURE0)
+	glActiveTexture(GL_TEXTURE0)
+
 	#Highlight block being looked at
 	if (looked_at := get_looked_at()[0]) is not None:
 		highlight_block(looked_at // 1)

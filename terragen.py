@@ -13,7 +13,7 @@ def gen_trees(coords):
 
 			# Calculate trees in chunk
 			avg_n = settings.chunk_size * settings.chunk_size * settings.tree_density_mean
-			n = noise.noise2(i / settings.T_res[0], j / settings.T_res[1]) * settings.tree_density_var * avg_n
+			n = noise.noise2(i / settings.tree_res[0], j / settings.tree_res[1]) * settings.tree_density_var * avg_n
 			n += settings.chunk_size * settings.chunk_size * settings.tree_density_mean
 
 			# Generate tree coordinates
@@ -69,6 +69,8 @@ def gen_heightmaps(coord_list):
 		heightmap = f(heightmap)	# Push values further towards extremes (else the height values are too close to the mean)
 		heightmap = (heightmap * (World.heightlim[1] - World.heightlim[0]) + World.heightlim[0])
 		World.heightmap[t_coords] = heightmap
+
+		World.biomemap[t_coords] = noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87)
 
 def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
