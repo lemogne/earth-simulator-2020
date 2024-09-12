@@ -3,6 +3,12 @@ from init import *
 def f(t):
 	return 6 * t**5 - 15 * t**4 + 10 * t**3
 
+def get_tree_schem(biome):
+	if biome[1] < 0.3:
+		return "spruce"
+	else:
+		return "tree"
+
 def gen_trees(coords):
 	total_trees = []
 	for i in range(coords[0] - 1, coords[0] + 2):
@@ -20,7 +26,7 @@ def gen_trees(coords):
 			k = np.arange(int(n))
 			x = (noise.noise2array(i + 64324.4 - 434.23 * k, np.array((j + 728491.2,))) + 1) / 2
 			z = (noise.noise2array(np.array((i - 46324.4,)), j - 278491.2 + 1874.283 * k).T + 1) / 2
-			tree_type = ((noise.noise2array(i - 2361.53 + 71834.23 * k, np.array((j - 94829.4,))) + 1) / 2 * len(schematic["tree"])).astype(np.uint32)
+			tree_type = ((noise.noise2array(i - 2361.53 + 71834.23 * k, np.array((j - 94829.4,))) + 1) / 2 * 4294967295).astype(np.uint32)
 			x = (f(x) * settings.chunk_size).astype(np.int64)
 			z = (f(z) * settings.chunk_size).astype(np.int64)
 			y = World.heightmap[(i, j)][x, z].astype(np.int64)
@@ -147,9 +153,12 @@ def gen_chunk(coords):
 
 	# Paste Trees into terrain:
 	for tree in trees:
-		dim = schematic["tree"][tree[3]][0].shape
+		biome = World.get_biome(tree[:3])
+		schemtype = schematic[get_tree_schem(biome)]
+		schem = schemtype[int(tree[3] / 4294967295 * len(schemtype))]
+		dim = schem[0].shape
 		block_under_tree = World.get_block(tree[:3])
-		if block_under_tree in [3, 13]:
+		if block_under_tree in [3, 13] and (biome[0] >= 0.33 or biome[1] <= 0.67):
 			height = World.get_height(tree[[0, 2]])
 			if height < World.water_level:
 				continue
@@ -161,7 +170,7 @@ def gen_chunk(coords):
 		elif block_under_tree != 2:
 			continue
 		tree[[0, 2]] -= np.array(coords) * World.chunk_size
-		tree[:3] -= schematic["tree"][tree[3]][2]
+		tree[:3] -= schem[2]
 		min_x = max(-tree[0], 0)
 		max_x = min(dim[0], World.chunk_size - tree[0])
 		min_z = max(-tree[2], 0)
@@ -170,8 +179,8 @@ def gen_chunk(coords):
 		if max_x < min_x or max_z < min_z:
 			continue
 
-		tree_part  = schematic["tree"][tree[3]][0][min_x : max_x, :, min_z : max_z]
-		tree_light = schematic["tree"][tree[3]][1][min_x : max_x,    min_z : max_z]
+		tree_part  = schem[0][min_x : max_x, :, min_z : max_z]
+		tree_light = schem[1][min_x : max_x,    min_z : max_z]
 		min_x = max(tree[0], 0)
 		max_x = min(tree[0] + dim[0], World.chunk_size)
 		min_z = max(tree[2], 0)

@@ -1689,6 +1689,11 @@ class World:
 		xyz[[0, 2]] %= World.chunk_size
 		return chunk_data[tuple(xyz)]
 
+	def get_biome(coords):
+		if coords is None:
+			return None
+		return World.get_hum_temp(World.biomemap[tuple(coords[[0, 2]] // World.chunk_size)][tuple(coords[[0, 2]] % World.chunk_size)], coords[1])[0] / types[settings.gpu_data_type][4]
+
 	def update_chunk(coords):
 		region, ch = World.get_region(coords)
 		if not region:
