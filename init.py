@@ -396,7 +396,7 @@ class Save_World:
 					World.file.close()
 				savefile = open(f"worlds/{name}.esw", "w+b")  # Create/overwrite world file as given by user input
 				World.file = savefile
-			savefile.write(b"ES20\x00v0.3")  # Write file header containing game version
+			savefile.write(b"ES20\x00v0.4")  # Write file header containing game version
 
 			write_bytes = lambda data, bytes: savefile.write(np.array(data).astype(f'V{bytes}').tobytes())
 
@@ -412,8 +412,9 @@ class Save_World:
 
 			savefile.write(np.array(World.T_res, dtype=np.float32).tobytes())
 			savefile.write(np.array(World.HL_res, dtype=np.float32).tobytes())
-			savefile.write(np.array(World.V_res, dtype=np.float32).tobytes())
 			savefile.write(np.array(World.G_res, dtype=np.float32).tobytes())
+			savefile.write(np.array(World.C_res, dtype=np.float32).tobytes())
+			savefile.write(np.array(World.B_res, dtype=np.float32).tobytes())
 
 			savefile.write(np.array(World.tree_res, dtype=np.float32).tobytes())
 			savefile.write(np.array([World.tree_density_mean, World.tree_density_var, 0, 0, 0], dtype=np.float32).tobytes())
@@ -517,7 +518,7 @@ class Load_World:
 				UI.buttons["Info"].set_text("This file is not a world!")
 				print("This file is not a world!")
 				return
-			if version == b"v0.3":
+			if version == b"v0.4":
 				World.bytes_for_block_ID = struct.unpack("b", readfile.read(1))[0]
 				World.infinite = struct.unpack("b", readfile.read(1))[0] == 0
 				World.region_size = struct.unpack("b", readfile.read(1))[0]
@@ -537,7 +538,60 @@ class Load_World:
 
 				World.T_res = struct.unpack("2f", readfile.read(8))
 				World.HL_res = struct.unpack("2f", readfile.read(8))
-				World.V_res = struct.unpack("2f", readfile.read(8))
+				World.G_res = struct.unpack("2f", readfile.read(8))
+				World.C_res = struct.unpack("2f", readfile.read(8))
+				World.B_res = struct.unpack("2f", readfile.read(8))
+
+				World.tree_res = struct.unpack("2f", readfile.read(8))
+				World.tree_density_mean = struct.unpack("f", readfile.read(4))[0]
+				World.tree_density_var = struct.unpack("f", readfile.read(4))[0]
+				readfile.seek(12, 1)
+
+				# Region table
+				region_table_size = struct.unpack("I", readfile.read(4))[0]
+				World.region_table = dict()
+				for _ in range(region_table_size):
+					region_coords = struct.unpack("2i", readfile.read(8))
+					file_data = struct.unpack("2i", readfile.read(8))
+					World.region_table[region_coords] = file_data
+				
+				# Load region where player is
+				player.chunkpos = player.pos // World.chunk_size
+				region = tuple((player.chunkpos // World.region_size)[[0, 2]])
+				readfile.seek(0, 0)
+				World.file = readfile
+				World.regions[region] = Region(region)
+				Load_World.load_region(region)
+				World.regions_to_load = []
+				player.old_rot = None
+				player.old_pos = None
+
+			elif version == b"v0.3":
+				UI.buttons["Info"].set_text(
+					f"This world is from version {str(version, 'ASCII')} and uses an old format. "\
+					"Please convert it by re-saving it in this version. "\
+					"Worlds in this format will not be supported much longer. "
+				)
+				print(UI.buttons["Info"].get_text())
+				World.bytes_for_block_ID = struct.unpack("b", readfile.read(1))[0]
+				World.infinite = struct.unpack("b", readfile.read(1))[0] == 0
+				World.region_size = struct.unpack("b", readfile.read(1))[0]
+				World.height = struct.unpack("i", readfile.read(4))[0]
+				World.chunk_size = struct.unpack("I", readfile.read(4))[0]
+
+				make_coord_array()
+				player.pos = np.array((struct.unpack("3f", readfile.read(12))))
+				player.rot = np.array((struct.unpack("3f", readfile.read(12))))
+				World.game_time = struct.unpack("i", readfile.read(4))[0]
+
+				# World gen
+				World.seed = struct.unpack("i", readfile.read(4))[0]
+				World.water_level = struct.unpack("i", readfile.read(4))[0]
+				World.heightlim = struct.unpack("2i", readfile.read(8))
+				noise.seed(int(World.seed))
+ 
+				World.T_res = struct.unpack("2f", readfile.read(8))
+				World.HL_res = struct.unpack("2f", readfile.read(8))
 				World.G_res = struct.unpack("2f", readfile.read(8))
 
 				World.tree_res = struct.unpack("2f", readfile.read(8))
@@ -704,6 +758,13 @@ class Load_World:
 				np.array(chunk_buffer), 
 				(World.height, World.chunk_size, World.chunk_size)
 			).astype(np.uint8).transpose((1, 0, 2))
+
+			coords = np.array(reg) * World.region_size + ch
+
+			x = np.arange(World.chunk_size) + coords[1] * World.chunk_size
+			z = np.arange(World.chunk_size) + coords[0] * World.chunk_size
+
+			World.gen_biomemap(tuple(coords), x, z)
 
 			# Compute chmin, chmax
 			for y in range(World.height):
@@ -1393,6 +1454,11 @@ class World:
 		World.regions_to_load = []
 		World.bytes_for_block_ID = Save_World.bytesneeded(len(game_blocks))
 		World.new_chunks = 0
+
+	def gen_biomemap(t_coords, x, z):
+		#World.biomemap[t_coords] = np.sin(1.57 * noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87))
+		World.biomemap[t_coords] = noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87)
+
 
 	def load_chunks(ForceLoad = False):
 		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
