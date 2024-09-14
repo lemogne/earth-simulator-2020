@@ -36,7 +36,7 @@ if settings.gpu_data_type == None:
 # Menu Options
 
 
-def quit_game():
+def quit_game(event):
 	glDisableClientState(GL_VERTEX_ARRAY)
 	glDisable(GL_TEXTURE_2D)
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY)
@@ -44,7 +44,7 @@ def quit_game():
 	quit()
 
 
-def toggle_menu():
+def toggle_menu(event):
 	global paused_buttons
 	UI.buttons = paused_buttons
 	UI.paused ^= True
@@ -160,7 +160,7 @@ class UI:
 			UI.char_sizes[1][ord(char)] = (char_size_dict[char][1] + 2) / 8
 
 
-	def write(text, loc, size, width=2, color=(1, 1, 1)):
+	def write(text, loc, size, color=(1, 1, 1), shadow=False):
 		if text == "":
 			return
 
@@ -175,8 +175,6 @@ class UI:
 			overcount = np.maximum.accumulate(without_reset * reset_at)
 			result = without_reset - overcount - 1
 			return result
-
-		glColor3fv(color)
 
 		loc = np.array(loc)
 		text_array = np.char.expandtabs(text, 4).reshape(1).view(np.int32)
@@ -198,37 +196,42 @@ class UI:
 		vert = (loc + ((character_coords + column_line_tiled) * size) *
 		        ((Display.centre[1] / Display.centre[0]) * Textures.text_ratio, 1)).ravel()
 
+		if shadow:
+			shadowloc = loc - (1.0, 1.0) / np.array(Display.centre)
+			shadowvert = (shadowloc + ((character_coords + column_line_tiled) * size) *
+					((Display.centre[1] / Display.centre[0]) * Textures.text_ratio, 1)).ravel()
+			glColor3fv(np.array(color) * 0.3)
+			glBindBuffer(GL_ARRAY_BUFFER, 0)
+			glVertexPointer(2, GL_DOUBLE, 0, shadowvert)
+			glTexCoordPointer(2, GL_DOUBLE, 0, tex)
+			glDrawArrays(GL_QUADS, 0, int(len(tex) / 2))
+
+		glColor3fv(color)
 		glBindBuffer(GL_ARRAY_BUFFER, 0)
 		glVertexPointer(2, GL_DOUBLE, 0, vert)
 		glTexCoordPointer(2, GL_DOUBLE, 0, tex)
 		glDrawArrays(GL_QUADS, 0, int(len(tex) / 2))
 		glColor3fv((1, 1, 1))
 
-	def input_text(variable, start=0, stop=None):
-		if UI.buttons.is_typing():
-			variable = variable[:-1]
-		else:
-			UI.buttons.set_typing(True)
-		for event in pg.event.get():
-			if event.type == pg.KEYDOWN:
-				key = event.key
-				if key == 8:
-					if len(variable) > start:
-						variable = variable[:-1]
-					continue
-				elif key == 13:
-					UI.buttons.set_typing(False)
-					return variable
-				elif key == 27:
-					UI.buttons.set_typing(False)
-					return variable[:start]
-				if stop == None or len(variable) <= stop:
-					variable = variable + event.unicode
-			elif event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+	def input_text(variable, event, start=0, stop=None):
+		UI.buttons.set_typing(True)
+		if event.type == pg.KEYDOWN:
+			key = event.key
+			if key == 8:
+				if len(variable) > start:
+					variable = variable[:-1]
+				return variable
+			elif key == 13:
 				UI.buttons.set_typing(False)
 				UI.buttons.set_input_button(None)
 				return variable
-		return variable + "_"
+			elif key == 27:
+				UI.buttons.set_typing(False)
+				UI.buttons.set_input_button(None)
+				return variable[:start]
+			if stop == None or len(variable) <= stop:
+				variable = variable + event.unicode
+		return variable
 
 	def check_hover(m_pos):
 		m_posGL = (( m_pos[0] - Display.centre[0]) / Display.centre[0],
@@ -264,7 +267,7 @@ class UI:
 			button = UI.buttons[button_]
 			box = button.get_box()
 			if button.has_texture() and button.is_text_box():
-				UI.write(button.get_text(),
+				UI.write(button.get_text() + ("_" if UI.buttons.get_input_button() == button else ""),
 				         ((box[0] * settings.button_scale + 0.1)[0] * (Display.centre[1] / Display.centre[0]),
 				          (box[0] * settings.button_scale - 0.1)[1]),
 				         0.05,
@@ -272,11 +275,11 @@ class UI:
 			else:
 				UI.write(button.get_text(),
 				         ((box[0] * settings.button_scale + 0.1)[0] * (Display.centre[1] / Display.centre[0]),
-				          (box[0] * settings.button_scale - 0.1)[1]), 0.05)
+				          (box[0] * settings.button_scale - 0.1)[1]), 0.05, color=(1, 1, 1), shadow=True)
 
-	def type_button(name):
+	def type_button(name, event):
 		UI.buttons.set_input_button(name)
-		UI.buttons[name].set_text(UI.input_text(UI.buttons[name].get_text()))
+		UI.buttons[name].set_text(UI.input_text(UI.buttons[name].get_text(), event))
 
 
 class Button:
@@ -299,9 +302,9 @@ class Button:
 		self.function = function
 		self.UI = None
 
-	def run(self):
+	def run(self, event):
 		if self.function != None:
-			self.function()
+			self.function(event)
 
 	def add_to_UI(self, UI):
 		self.UI = UI
@@ -327,11 +330,11 @@ class Button:
 	def is_text_box(self):
 		return self.input_mode
 
-	def type_in(self):
-		self.text = UI.input_text(self.text)
+	def type_in(self, event):
+		self.text = UI.input_text(self.text, event)
 
 
-def leave_world():
+def leave_world(event):
 	# Unloads chunks and quits the world
 	World.regions = {}
 	World.active_regions = {}
@@ -344,7 +347,7 @@ def leave_world():
 
 class Start_Game:
 
-	def run():
+	def run(event):
 		World.new = True
 		# Determining world seed:
 		# if field is empty, generate random seed; else, try to interpret seed as number. If not possible, display error.
@@ -358,14 +361,14 @@ class Start_Game:
 				return
 		UI.in_menu = False
 
-	def screen():
+	def screen(event):
 		UI.buttons = Start_Game.buttons
 
-	def get_seed():
+	def get_seed(event):
 		UI.buttons.set_input_button("Seed")
-		UI.buttons["Seed"].set_text(UI.input_text(UI.buttons["Seed"].get_text()))
+		UI.buttons["Seed"].set_text(UI.input_text(UI.buttons["Seed"].get_text(), event))
 
-	def back():
+	def back(event):
 		global menu_buttons
 		UI.buttons = menu_buttons
 
@@ -381,7 +384,7 @@ class Start_Game:
 class Save_World:
 
 	bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
-	def run():
+	def run(event):
 		global game_blocks
 
 		name = UI.buttons["Name"].get_text()
@@ -458,14 +461,14 @@ class Save_World:
 			UI.buttons["Info"].set_text(f"Failed to save world: {e}")
 		print(UI.buttons["Info"].get_text())
 
-	def screen():
+	def screen(event):
 		UI.buttons = Save_World.buttons
 
-	def get_name():
+	def get_name(event):
 		UI.buttons.set_input_button("Name")
-		UI.buttons["Name"].set_text(UI.input_text(UI.buttons["Name"].get_text()))
+		UI.buttons["Name"].set_text(UI.input_text(UI.buttons["Name"].get_text(), event))
 
-	def back():
+	def back(event):
 		global paused_buttons
 		UI.buttons = paused_buttons
 
@@ -479,7 +482,7 @@ class Save_World:
 
 class Load_World:
 
-	def run():
+	def run(event):
 		global player, game_blocks, make_coord_array
 		# Clear Chunk and Light arrays (dictionaries, whatever)
 		player.old_chunkpos = None
@@ -722,7 +725,7 @@ class Load_World:
 			region.gen_chunks[ch] = True
 
 
-	def screen():
+	def screen(event):
 		try:
 			worldlist = os.listdir("worlds")
 			worlds = list(filter(lambda x: (x[-4:] == ".esw"), worldlist))
@@ -749,13 +752,13 @@ class Load_World:
 		Load_World.reload()
 		UI.buttons = Load_World.buttons
 
-	def back():
+	def back(event):
 		global menu_buttons
 		UI.buttons = menu_buttons
 
 	def gen_func(world):
 
-		def f():
+		def f(event):
 			for i in range(len(Load_World.pages)):
 				page_length = settings.worlds_per_page
 				if i == len(Load_World.worlds) // settings.worlds_per_page:
@@ -774,12 +777,12 @@ class Load_World:
 
 		return f
 
-	def next_page():
+	def next_page(event):
 		if Load_World.page < len(Load_World.pages) - 1:
 			Load_World.page += 1
 			Load_World.reload()
 
-	def prev_page():
+	def prev_page(event):
 		if Load_World.page > 0:
 			Load_World.page -= 1
 			Load_World.reload()
@@ -809,11 +812,11 @@ class Settings:
 	variables = {}
 	graphics_changed = False
 
-	def main():
+	def main(event):
 		settings.logo_shown = True
 		UI.buttons = Settings.buttons
 
-	def cancel():
+	def cancel(event):
 		global paused_buttons, menu_buttons
 		settings.logo_shown = True
 		Settings.variables = {}
@@ -822,7 +825,7 @@ class Settings:
 		else:
 			UI.buttons = paused_buttons
 
-	def apply():
+	def apply(event):
 		setfile = open("settings.py", "r")
 		setlines = setfile.readlines()
 		setfile.close()
@@ -868,7 +871,7 @@ class Settings:
 
 		Sky.init()
 		setfile.close()
-		Settings.cancel()
+		Settings.cancel(event)
 
 	def update_variable(name, var, type_):
 		if not UI.buttons.is_typing():
@@ -909,38 +912,40 @@ class Settings:
 		# Function generator functions
 		# Used to generate functions for buttons with given parameters
 		def gen_cat_func(category):
-			def cat_func():
+			def cat_func(event):
 				UI.buttons = Settings.categories[category]
 				settings.logo_shown = False
 			return cat_func
 
 		def gen_bool_func(var_name, button_name, is_graphics):
-			def button_func():
-				Settings.variables[var_name] = str(getattr(settings, var_name) ^ True)
-				UI.buttons[button_name].set_text(str(getattr(settings, var_name) ^ True))
+			def button_func(event):
+				attr = getattr(settings, var_name)
+				Settings.variables[var_name] = str(attr ^ True)
+				UI.buttons[button_name].set_text(str(attr ^ True))
+				setattr(settings, var_name, attr ^ True)
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func
 
 		def gen_right_tuple_func(button_name, var_name, var_type, is_graphics):
-			def button_func():
-				UI.type_button(button_name + "1")
+			def button_func(event):
+				UI.type_button(button_name + "1", event)
 				Settings.update_variable(button_name + "1", var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func
 		
 		def gen_left_tuple_func(button_name, var_name, var_type, is_graphics):
-			def button_func():
-				UI.type_button(button_name + "0")
+			def button_func(event):
+				UI.type_button(button_name + "0", event)
 				Settings.update_variable(button_name + "0", var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func
 
 		def get_button_func(button_name, var_name, var_type, is_graphics):
-			def button_func():
-				UI.type_button(button_name)
+			def button_func(event):
+				UI.type_button(button_name, event)
 				Settings.update_variable(button_name, var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
