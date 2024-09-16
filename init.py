@@ -336,6 +336,7 @@ class Button:
 
 def leave_world(event):
 	# Unloads chunks and quits the world
+	save_world()
 	World.regions = {}
 	World.active_regions = {}
 	World.loaded_chunks = {}
@@ -359,6 +360,16 @@ class Start_Game:
 			except ValueError:
 				UI.buttons["Info"].set_text("World seed must be an integer!")
 				return
+
+		worldname = UI.buttons["Name"].get_text()
+		if worldname == "":
+			worldname = "world_" + time.strftime("%Y-%m-%d_%H%M%S")
+		filepath = f"worlds/{worldname}.esw"
+		if os.path.exists(filepath):
+			UI.buttons["Info"].set_text(f"World '{worldname}' already exists!")
+			return
+		World.file = open(filepath, "w+b")  # Create/overwrite world file as given by user input
+
 		UI.in_menu = False
 
 	def screen(event):
@@ -368,117 +379,96 @@ class Start_Game:
 		UI.buttons.set_input_button("Seed")
 		UI.buttons["Seed"].set_text(UI.input_text(UI.buttons["Seed"].get_text(), event))
 
-	def back(event):
-		global menu_buttons
-		UI.buttons = menu_buttons
-
-	buttons = Interface({
-	    "WorldSeed": Button((0, 0.5), "World Seed:"),
-	    "Seed": Button((0, 0.2), "", True, False, get_seed),
-	    "CreateWorld": Button((0, -0.1), "Create World", False, False, run),
-	    "Info": Button((0, -0.4), ""),
-	    "Back": Button((0, -0.7), "Back", False, False, back)
-	})
-
-
-class Save_World:
-
-	bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
-	def run(event):
-		global game_blocks
-
-		name = UI.buttons["Name"].get_text()
-		try:
-			if not name and World.file:
-				savefile = World.file
-			else:
-				if World.file:
-					World.file.close()
-				savefile = open(f"worlds/{name}.esw", "w+b")  # Create/overwrite world file as given by user input
-				World.file = savefile
-			savefile.write(b"ES20\x00v0.4")  # Write file header containing game version
-
-			write_bytes = lambda data, bytes: savefile.write(np.array(data).astype(f'V{bytes}').tobytes())
-
-			# Calculating bytes needed to save world data; saving that information to the file
-			BLblocks = Save_World.bytesneeded(len(game_blocks))
-
-			savefile.write(np.array([BLblocks, World.infinite == 0, World.region_size], dtype=np.int8).tobytes())
-			savefile.write(np.array([World.height, World.chunk_size], dtype=np.int32).tobytes())
-			savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
-			savefile.write(np.array(player.rot, dtype=np.float32).tobytes())
-			savefile.write(np.array([World.game_time, World.seed, World.water_level], dtype=np.int32).tobytes())
-			savefile.write(np.array(World.heightlim, dtype=np.int32).tobytes())
-
-			savefile.write(np.array(World.T_res, dtype=np.float32).tobytes())
-			savefile.write(np.array(World.HL_res, dtype=np.float32).tobytes())
-			savefile.write(np.array(World.G_res, dtype=np.float32).tobytes())
-			savefile.write(np.array(World.C_res, dtype=np.float32).tobytes())
-			savefile.write(np.array(World.B_res, dtype=np.float32).tobytes())
-
-			savefile.write(np.array(World.tree_res, dtype=np.float32).tobytes())
-			savefile.write(np.array([World.tree_density_mean, World.tree_density_var, 0, 0, 0], dtype=np.float32).tobytes())
-			savefile.write(np.array(len(World.regions), dtype=np.int32).tobytes())
-
-			table_pos = savefile.tell()
-
-			savefile.seek(16 * len(World.regions), 1)
-			i = savefile.tell()
-
-			# Save each chunk separately, in sequence
-			for region in World.regions:
-				savefile.seek(table_pos)
-				savefile.write(np.array(region, dtype=np.int32).tobytes())
-				region = World.regions[region]
-				savefile.write(np.array([i, len(region.chunks)], dtype=np.int32).tobytes())
-				table_pos = savefile.tell()
-				savefile.seek(i)
-
-				for ch in region.chunks:
-					pg.event.get()  # To prevent game window from freezing
-					savefile.write(np.array(ch, dtype=np.uint8).tobytes())  # Writes the chunk coordinates to the file
-
-					# Numpy RLE from stackoverflow
-					flat_chunk = region.chunks[ch].transpose((1, 0, 2)).flatten()
-					loc_run_start = np.empty(len(flat_chunk), dtype=bool)
-					loc_run_start[0] = True
-					np.not_equal(flat_chunk[:-1], flat_chunk[1:], out=loc_run_start[1:])
-					run_starts = np.nonzero(loc_run_start)[0]
-					run_values = flat_chunk[loc_run_start]
-					run_lengths = np.diff(np.append(run_starts, len(flat_chunk)))
-
-					# Block counting loop; compresses block data by making a list of (amount of blocks in a row, block ID); saves to file
-					for counter, block in zip(run_lengths, run_values):
-						BLpos = Save_World.bytesneeded(counter)
-						if counter > 127:
-							write_bytes(BLpos + 127, 1)
-						write_bytes(counter, BLpos)
-						write_bytes(block, BLblocks)
-				i = savefile.tell()
-					
-
-			UI.buttons["Info"].set_text("World saved successfully!")
-		except Exception as e:
-			UI.buttons["Info"].set_text(f"Failed to save world: {e}")
-		print(UI.buttons["Info"].get_text())
-
-	def screen(event):
-		UI.buttons = Save_World.buttons
-
 	def get_name(event):
 		UI.buttons.set_input_button("Name")
 		UI.buttons["Name"].set_text(UI.input_text(UI.buttons["Name"].get_text(), event))
 
 	def back(event):
-		global paused_buttons
-		UI.buttons = paused_buttons
+		global menu_buttons
+		UI.buttons = menu_buttons
 
 	buttons = Interface({
-	    "Name": Button((0, 0.2), "", True, False, get_name),
-	    "Save": Button((0, -0.1), "Save World", False, False, run),
-	    "Info": Button((0, -0.4), "", None),
+	    "WorldName": Button((-1.5, 0.5), "World Name:", None, True),
+	    "Name": Button((0, 0.5), "", True, False, get_name),
+	    "WorldSeed": Button((-1.5, 0.2), "World Seed:", None, True),
+	    "Seed": Button((0, 0.2), "", True, False, get_seed),
+	    "CreateWorld": Button((0, -0.2), "Create World", False, False, run),
+	    "Info": Button((0, -0.4), ""),
 	    "Back": Button((0, -0.7), "Back", False, False, back)
 	})
+
+
+bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
+
+def save_world():
+	global game_blocks
+	try:
+		savefile = World.file
+		savefile.write(b"ES20\x00v0.4")  # Write file header containing game version
+
+		write_bytes = lambda data, bytes: savefile.write(np.array(data).astype(f'V{bytes}').tobytes())
+
+		# Calculating bytes needed to save world data; saving that information to the file
+		BLblocks = bytesneeded(len(game_blocks))
+
+		savefile.write(np.array([BLblocks, World.infinite == 0, World.region_size], dtype=np.int8).tobytes())
+		savefile.write(np.array([World.height, World.chunk_size], dtype=np.int32).tobytes())
+		savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
+		savefile.write(np.array(player.rot, dtype=np.float32).tobytes())
+		savefile.write(np.array([World.game_time, World.seed, World.water_level], dtype=np.int32).tobytes())
+		savefile.write(np.array(World.heightlim, dtype=np.int32).tobytes())
+
+		savefile.write(np.array(World.T_res, dtype=np.float32).tobytes())
+		savefile.write(np.array(World.HL_res, dtype=np.float32).tobytes())
+		savefile.write(np.array(World.G_res, dtype=np.float32).tobytes())
+		savefile.write(np.array(World.C_res, dtype=np.float32).tobytes())
+		savefile.write(np.array(World.B_res, dtype=np.float32).tobytes())
+
+		savefile.write(np.array(World.tree_res, dtype=np.float32).tobytes())
+		savefile.write(np.array([World.tree_density_mean, World.tree_density_var, 0, 0, 0], dtype=np.float32).tobytes())
+		savefile.write(np.array(len(World.regions), dtype=np.int32).tobytes())
+
+		table_pos = savefile.tell()
+
+		savefile.seek(16 * len(World.regions), 1)
+		i = savefile.tell()
+
+		# Save each chunk separately, in sequence
+		for region in World.regions:
+			savefile.seek(table_pos)
+			savefile.write(np.array(region, dtype=np.int32).tobytes())
+			region = World.regions[region]
+			savefile.write(np.array([i, len(region.chunks)], dtype=np.int32).tobytes())
+			table_pos = savefile.tell()
+			savefile.seek(i)
+
+			for ch in region.chunks:
+				pg.event.get()  # To prevent game window from freezing
+				savefile.write(np.array(ch, dtype=np.uint8).tobytes())  # Writes the chunk coordinates to the file
+
+				# Numpy RLE from stackoverflow
+				flat_chunk = region.chunks[ch].transpose((1, 0, 2)).flatten()
+				loc_run_start = np.empty(len(flat_chunk), dtype=bool)
+				loc_run_start[0] = True
+				np.not_equal(flat_chunk[:-1], flat_chunk[1:], out=loc_run_start[1:])
+				run_starts = np.nonzero(loc_run_start)[0]
+				run_values = flat_chunk[loc_run_start]
+				run_lengths = np.diff(np.append(run_starts, len(flat_chunk)))
+
+				# Block counting loop; compresses block data by making a list of (amount of blocks in a row, block ID); saves to file
+				for counter, block in zip(run_lengths, run_values):
+					BLpos = bytesneeded(counter)
+					if counter > 127:
+						write_bytes(BLpos + 127, 1)
+					write_bytes(counter, BLpos)
+					write_bytes(block, BLblocks)
+			i = savefile.tell()
+				
+
+		UI.buttons["Info"].set_text("World saved successfully!")
+	except Exception as e:
+		UI.buttons["Info"].set_text(f"Failed to save world: {e}")
+	print(UI.buttons["Info"].get_text())
 
 
 class Load_World:
@@ -1102,13 +1092,15 @@ class Settings:
 
 
 paused_buttons = Interface({
+	"Info": Button((0, -1.2), ""),
     "Main": Button((0, -0.8), "Back to Main Menu", False, False, leave_world),
-    "Save": Button((0, -0.4), "Save World", False, False, Save_World.screen),
+    "Save": Button((0, -0.4), "Save World", False, False, save_world),
     "Settings": Button((0, 0), "Settings", False, False, Settings.main),
     "Resume": Button((0, 0.4), "Resume Game", False, False, toggle_menu)
 })
 
 menu_buttons = Interface({
+	"Info": Button((0, -1.2), ""),
     "Quit": Button((0, -0.9), "Quit Game", False, False, quit_game),
     "Settings": Button((0, -0.5), "Settings", False, False, Settings.main),
     "Load": Button((0, -0.1), "Load World", False, False, Load_World.screen),
@@ -1453,7 +1445,7 @@ class World:
 		World.file = None
 		World.region_table = {}
 		World.regions_to_load = []
-		World.bytes_for_block_ID = Save_World.bytesneeded(len(game_blocks))
+		World.bytes_for_block_ID = bytesneeded(len(game_blocks))
 		World.new_chunks = 0
 
 	def gen_biomemap(t_coords, x, z):
