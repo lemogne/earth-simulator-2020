@@ -592,6 +592,7 @@ class Load_World:
  
 				World.T_res = struct.unpack("2f", readfile.read(8))
 				World.HL_res = struct.unpack("2f", readfile.read(8))
+				readfile.seek(8, 1)
 				World.G_res = struct.unpack("2f", readfile.read(8))
 
 				World.tree_res = struct.unpack("2f", readfile.read(8))
