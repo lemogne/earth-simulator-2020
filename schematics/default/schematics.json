@@ -1,5 +1,6 @@
 {
 	"tree": ["tree1", "tree2", "tree3", "tree4"],
 	"spruce": ["spruce1"],
-	"jungle": ["jungle1", "jungle2"]
+	"jungle": ["jungle1", "jungle2"],
+	"desert": ["cactus1", "cactus2", "shrub1", "shrub2", "shrub3"]
 }
