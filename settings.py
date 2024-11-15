@@ -51,6 +51,7 @@ icon_offset = (0.8, -0.8)
 pause_menu_color = (0.3, 0.3, 0.3)
 button_scale = 0.6
 logo_scale = 1
+show_crosshair = True
 shown = True					#hidden
 logo_shown = True				#hidden
 

@@ -98,12 +98,13 @@ def render(chat_string):
 		UI.write(chat_string, (-0.9475, 0.875), 0.03125)
 
 		#Draw crosshair
-		glBindTexture(GL_TEXTURE_2D, Textures.cursor[0])
-		glBegin(GL_QUADS)
-		for i in range(4):
-			glTexCoord2fv(character_coords[i])
-			glVertex2f(character_coords[i][0] * (Display.centre[1] / Display.centre[0]) * 0.1 - 0.05, character_coords[i][1] * 0.1 - 0.05)
-		glEnd()
+		if settings.show_crosshair:
+			glBindTexture(GL_TEXTURE_2D, Textures.cursor[0])
+			glBegin(GL_QUADS)
+			for i in range(4):
+				glTexCoord2fv(character_coords[i])
+				glVertex2f(character_coords[i][0] * (Display.centre[1] / Display.centre[0]) * 0.1 - 0.05, character_coords[i][1] * 0.1 - 0.05)
+			glEnd()
 
 	#Draw pause menu
 	glColor3f(1.0, 1.0, 1.0)
