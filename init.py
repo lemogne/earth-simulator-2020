@@ -1383,6 +1383,13 @@ class World:
 		region.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
 		    coords[2] % World.chunk_size)] = block
 
+		World.update_chunk_min_max(coords, block)
+
+	def update_chunk_min_max(coords, block):
+		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
+		region, ch = World.get_region(ch)
+		if not region:
+			return
 		# Update chunk min and max values
 		chmin, chmax = region.chunk_min_max[ch]
 		if block == 0:
@@ -1391,10 +1398,24 @@ class World:
 		else:
 			chmax_new = max(chmin + chmax, math.floor(coords[1]) / World.chunk_size) - chmin
 			chmin_new = region.thorough_chmin(ch) if coords[1] == chmin else chmin
+		
+		# Set some heuristic variables to None to trigger a chunk reload
 		if (region.chunk_min_max[ch] != (chmin_new, chmax_new)).any():
 			player.old_chunkpos = None
-		region.chunk_min_max[ch] = (chmin_new, chmax_new)
+		player.old_rot = None
+		
+		coords = np.array(coords)
+		# Propagate value to neighbouring chunk if on edge
+		if ch[0] == 0:
+			World.update_chunk_min_max(coords - (World.chunk_size // 2, 0, 0), block)
+		elif ch[0] == World.chunk_size - 1:
+			World.update_chunk_min_max(coords + (World.chunk_size // 2, 0, 0), block)
+		if ch[1] == 0:
+			World.update_chunk_min_max(coords - (0, 0, World.chunk_size // 2), block)
+		elif ch[1] == World.chunk_size - 1:
+			World.update_chunk_min_max(coords + (0, 0, World.chunk_size // 2), block)
 
+		region.chunk_min_max[ch] = (chmin_new, chmax_new)
 
 coordArray = []
 
