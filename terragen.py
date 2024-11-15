@@ -6,8 +6,10 @@ def f(t):
 def get_tree_schem(biome):
 	if biome[1] < 0.3:
 		return "spruce"
-	else:
+	elif biome[1] < 0.7:
 		return "tree"
+	else:
+		return "jungle"
 
 def gen_trees(coords):
 	total_trees = []
