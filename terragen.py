@@ -4,6 +4,9 @@ from init import *
 # Generate random array of chunks
 def gen_terrain():
 	WorldSize = Vector(2**settings.world_size_F, 2**settings.world_size_F)
+	World.height = settings.world_height
+	World.chunk_size = settings.chunk_size
+	World.chunk_min_max = dict()
 
 	heightmap = ((generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.Tres) + 1) / 2)
 	levelmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.HLres) + 1) / 2
@@ -42,6 +45,7 @@ def gen_terrain():
 
 	World.chunks = {}
 	World.light = {}
+	make_coord_array()
 	# Generate Chunk block arrays based on height map
 	for _i in range(WorldSize[0]):
 		for _k in range(WorldSize[1]):

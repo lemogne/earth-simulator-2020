@@ -16,7 +16,9 @@ def render(chat_string):
 		glUseProgram(DayNightShader)
 	bright_loc = glGetUniformLocation(DayNightShader, "brightness")
 	chunkpos_loc = glGetUniformLocation(DayNightShader, "chunkpos")
+	chunksize_loc = glGetUniformLocation(DayNightShader, "chunk_size")
 	glUniform1f(bright_loc, (clamp(math.cos((World.game_time / 1024) * 2 * math.pi) * 2, -1, 1) + 1) / 2)
+	glUniform1i(chunksize_loc, World.chunk_size)
 
 	World.load_chunks()
 
