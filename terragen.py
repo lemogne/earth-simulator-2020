@@ -78,8 +78,8 @@ def gen_heightmaps(coord_list):
 		heightmap = (heightmap * (World.heightlim[1] - World.heightlim[0]) + World.heightlim[0])
 		World.heightmap[t_coords] = heightmap
 
-		#World.biomemap[t_coords] = np.sin(1.57 * noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87))
-		World.biomemap[t_coords] = noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87)
+		World.gen_biomemap(t_coords, x, z)
+		
 
 def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
