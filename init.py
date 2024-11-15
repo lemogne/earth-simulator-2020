@@ -1600,17 +1600,6 @@ def mode_3D():
 	glEnable(GL_CULL_FACE)
 
 
-def amax(a, b):
-	if abs(a) > abs(b):
-		return a
-	return b
-
-
-def amin(array):
-	absarray = abs(array)
-	return array[np.argmin(absarray)]
-
-
 def set_time(time):
 	settings.starting_time += time - World.game_time
 
