@@ -77,7 +77,7 @@ Rotation:\t{str(round(player.rot, 4))[1:-1]}
 FPS:\t\t{prev_frames}
 Looking at:\t{lookedAt_str} (ID: {World.get_block(lookedAt_coords)})
 World Seed:\t{World.seed}
-Game Time:\t{World.game_time}"""
+Game Time:\t{round(World.game_time)}"""
 
 		# Resets frame count
 		if int(now) != last_second:
