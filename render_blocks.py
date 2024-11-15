@@ -47,7 +47,7 @@ def render(chat_string):
 	glTranslatef(128, 128, 128)
 	for loaded_chunk in World.loaded_chunks:
 		glPushMatrix()
-		glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1] * 16)
+		glTranslatef(loaded_chunk[0] * World.chunk_size, 0, loaded_chunk[1] * World.chunk_size)
 		render_chunk(World.loaded_chunks[loaded_chunk][0])
 		glPopMatrix()
 
@@ -56,7 +56,7 @@ def render(chat_string):
 	for loaded_chunk in World.loaded_chunks:
 		if World.loaded_chunks[loaded_chunk][1] != None:
 			glPushMatrix()
-			glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1] * 16)
+			glTranslatef(loaded_chunk[0] * World.chunk_size, 0, loaded_chunk[1] * World.chunk_size)
 			render_chunk(World.loaded_chunks[loaded_chunk][1])
 			glPopMatrix()
 	
