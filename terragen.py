@@ -30,7 +30,7 @@ def generate_perlin_noise_2d(shape, res, seed=None):
 
 # Generate random array of chunks
 def gen_terrain():
-	WorldSize = Vector(2**settings.world_size_F, 2**settings.world_size_F)
+	WorldSize = np.array((2**settings.world_size_F, 2**settings.world_size_F))
 	World.height = settings.world_height
 	World.chunk_size = settings.chunk_size
 	World.chunk_min_max = dict()
@@ -144,8 +144,8 @@ def gen_terrain():
 						     (WorldSize[1] / 2) * settings.chunk_size), schematic["tree"][tree[3]][x, y, z])
 
 	# Setup
-	player.pos = Vector(
+	player.pos = np.array((
 	    -0.5,
-	    float(
-	        max(heightmap[int(WorldSize[0] * settings.chunk_size / 2)][int(WorldSize[1] * settings.chunk_size /
-	                                                                       2)], 33) + 2), -0.5)
+	    float(max(heightmap[int(WorldSize[0] * settings.chunk_size / 2)][int(WorldSize[1] * settings.chunk_size /2)], 33) + 2),
+		-0.5)
+	)
