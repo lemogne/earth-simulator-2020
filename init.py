@@ -336,7 +336,7 @@ class Button:
 
 def leave_world(event):
 	# Unloads chunks and quits the world
-	save_world()
+	save_world(event)
 	World.regions = {}
 	World.active_regions = {}
 	World.loaded_chunks = {}
@@ -398,9 +398,9 @@ class Start_Game:
 	})
 
 
-bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
+bytesneeded = lambda x: np.uint8(math.log(x, 256) + 1 // 1)
 
-def save_world():
+def save_world(event):
 	global game_blocks
 	try:
 		raw_region_data = {}
