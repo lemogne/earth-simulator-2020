@@ -102,11 +102,12 @@ def gen_chunk(coords):
 
 	# Actually generate chunks and calculate lighting
 	chmin = np.min(heightmap) / settings.chunk_size
+	region.lock = True
 	region.chunk_min_max[ch] = (chmin, (np.max(heightmap) / settings.chunk_size) - chmin)
 	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
 												stone_map).astype(np.uint8)
 	region.light[ch] = ((heightmap > settings.water_level) * heightmap + (heightmap < settings.water_level) * settings.water_level)
-	pg.event.get()	# To prevent operating system from marking process as frozen
+	region.gen_chunks[ch] = True
 
 	trees = gen_trees(coords)
 
@@ -115,7 +116,6 @@ def gen_chunk(coords):
 
 	# Paste Trees into terrain:
 	for tree in trees:
-		pg.event.get()
 		if World.get_block(tree[:3] + (-2, 0, -3)) != 2:
 			continue
 		for x in range(5):
@@ -127,6 +127,7 @@ def gen_chunk(coords):
 					z_in_bounds = coords[1] * settings.chunk_size <= a_z < (coords[1] + 1) * settings.chunk_size
 					if schematic["tree"][tree[3]][x, y, z] != 0 and x_in_bounds and z_in_bounds:
 						World.put_block((a_x, y + tree[1] + 1, a_z), schematic["tree"][tree[3]][x, y, z])
+	region.lock = False
 
 # Generate random array of chunks
 def gen_terrain():
@@ -134,17 +135,33 @@ def gen_terrain():
 	World.height = settings.world_height
 	World.chunk_size = settings.chunk_size
 
-	World.regions = {(0, 0): Region((0, 0)), (-1, 0): Region((-1, 0)), (0, -1): Region((0, -1)), (-1, -1): Region((-1, -1))}
 	make_coord_array()
-	# Generate Chunk block arrays based on height map
-	for _i in range(WorldSize[0]):
-		for _k in range(WorldSize[1]):
-			# Actually generate chunks and calculate lighting
-			ch = (_i - WorldSize[0] // 2, _k - WorldSize[1] // 2)
-			gen_chunk(ch)
-			pg.event.get()	# To prevent operating system from marking process as frozen
-
+	gen_region((0, 0))
 
 	# Setup
-	player.pos = np.array((-0.5, World.heightmap[(0, 0)][0, 0] + 1,-0.5)
-	)
+	chunk_x = settings.region_size // 2
+	x = settings.chunk_size * chunk_x
+	player.pos = np.array((x - 0.5, World.heightmap[(chunk_x, chunk_x)][0, 0] + 2, x - 0.5))
+	player.chunkpos = player.pos // settings.chunk_size
+
+def gen_region(reg):
+	World.regions[reg] = Region(reg)
+	x = reg[0] * settings.region_size
+	y = reg[1] * settings.region_size
+	for i in range(x, x + settings.region_size):
+		for j in range(y, y + settings.region_size):
+			gen_chunk((i, j))
+			pg.event.get()
+
+def gen_chunks():
+	while (ch := World.chunks_to_generate.pop(0) if len(World.chunks_to_generate) > 0 else None):
+		gen_chunk(ch)
+
+def gen_chunk_thread():
+	try:
+		while not UI.in_menu:
+			gen_chunks()
+			time.sleep(1)
+	except Exception as e:
+		World.thread_exception = e
+		print(e)

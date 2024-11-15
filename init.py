@@ -1046,17 +1046,22 @@ class Region:
 	chunk_coords = None
 	in_view = None
 	chunk_y_lims = None
+	lock = True
+	gen_chunks = None
 
 	def __init__(self, pos):
 		self.preloaded_chunks = dict()
 		self.loaded_chunks = dict()
 		self.to_be_loaded = list()
 		self.preloaded_data = dict()
-		self.chunk_min_max = dict()
+		self.chunk_min_max = np.full((settings.region_size, settings.region_size, 2), 0.0)
 		self.chunks = dict()
 		self.light = dict()
 		self.pos = np.array(pos) * settings.region_size
-		self.chunk_coords = np.array(list(self.chunks.keys()))
+		self.chunk_coords = None
+		self.lock = False
+		self.gen_chunks = np.full((settings.region_size, settings.region_size), False)
+
 
 	def __del__(self):
 		for ch in self.preloaded_chunks:
@@ -1065,13 +1070,23 @@ class Region:
 				glDeleteBuffers(1, int(self.preloaded_chunks[ch][1][0]))
 
 	def load_chunks(self, change_pos, change_rot, ForceLoad=False):
-		if change_pos:
-			self.chunk_coords = np.array(list(self.chunks.keys()))
-			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, 0] - player.chunkpos[0] + self.pos[0]),
-			                                         abs(self.chunk_coords[:, 1] - player.chunkpos[2] + self.pos[1]))
+		if self.lock:
+			return
+		if change_pos or self.chunk_coords is None or ForceLoad:
+			self.chunk_coords = np.mgrid[0:settings.region_size, 0:settings.region_size].T
+			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
+			                                         abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1]))
 			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
-			self.chunk_y_lims = np.array(list(self.chunk_min_max.values()))[chunk_distance <= settings.render_distance]
+			gen_status = self.gen_chunks[chunk_distance <= settings.render_distance]
+			to_generate = self.chunk_coords[~gen_status]
+			self.chunk_coords = self.chunk_coords[gen_status]
+			self.chunk_y_lims = self.chunk_min_max[chunk_distance <= settings.render_distance][gen_status]
 			player.old_rot = None
+
+			for ch in to_generate:
+				key = tuple((ch + self.pos).astype(np.int32))
+				if key not in World.chunks_to_generate:
+					World.chunks_to_generate.append(key)
 		if ForceLoad:
 			self.in_view = np.full(shape=len(self.chunk_coords), fill_value=True)
 			player.old_rot = None
@@ -1085,14 +1100,14 @@ class Region:
 			self.loaded_chunks[ch] = World.load_chunk(data)
 			self.preloaded_chunks[ch] = self.loaded_chunks[ch]
 
+		self.to_be_loaded = list()
 		for ch in self.chunk_coords[self.in_view]:
-			ch = tuple(ch)
+			ch = tuple(ch.astype(np.int32))
 			if not ch in self.preloaded_chunks.keys():
-				if not ch in self.preloaded_data.keys() and not ch in self.to_be_loaded:
+				if not ch in self.preloaded_data.keys():
 					self.to_be_loaded.append(ch)
 			else:
 				self.loaded_chunks[ch] = self.preloaded_chunks[ch]
-		#print(self.pos, self.to_be_loaded)
 		
 
 	# TODO: possible error: sudden jump in y level between neighbouring chunks
@@ -1119,6 +1134,7 @@ class World:
 	chunk_size = settings.chunk_size
 	heightmap = {}
 	regions = {}
+	chunks_to_generate = []
 	active_regions = []
 
 	def init():
@@ -1137,10 +1153,11 @@ class World:
 			player.old_rot = player.rot // 5
 		World.active_regions = []
 		for i in range(int(reg_min[0]), int(reg_max[0]) + 1):
-			for j in range(int(reg_min[1]), int(reg_max[1]) + 1):
-				if (i, j) in World.regions:
-					World.regions[(i,j)].load_chunks(change_pos, change_rot, ForceLoad)
-					World.active_regions.append(World.regions[(i, j)])
+			for j in range(int(reg_min[2]), int(reg_max[2]) + 1):
+				if (i, j) not in World.regions:
+					World.regions[(i, j)] = Region((i, j))
+				World.regions[(i, j)].load_chunks(change_pos, change_rot, ForceLoad)
+				World.active_regions.append(World.regions[(i, j)])
 
 	def load_chunk(chunkdata):
 		vert_tex_list = chunkdata[0][0]
@@ -1168,7 +1185,7 @@ class World:
 			reg = World.regions[reg_coords]
 		else:
 			reg = None
-		ch = (chunkpos[0] % settings.region_size, chunkpos[1] % settings.region_size)
+		ch = (int(chunkpos[0] % settings.region_size), int(chunkpos[1] % settings.region_size))
 		return (reg, ch)
 
 	def process_chunk(chunkpos):
@@ -1176,7 +1193,7 @@ class World:
 		chunk = region.chunks[ch]
 		blocks = np.vstack(chunk)
 		chunk_light = region.light[ch]
-
+		
 		# Shifts 3D block array by +/-1 in each direction to determine neighbour
 		neighbours = [
 		    np.dstack(((World.chunk_data((chunkpos[0], chunkpos[1] - 1))[:, :, -1:]), chunk[:, :, :-1])),
@@ -1376,7 +1393,7 @@ class World:
 		else:
 			chmax_new = max(chmin + chmax, math.floor(coords[1]) / World.chunk_size) - chmin
 			chmin_new = region.thorough_chmin(ch) if coords[1] == chmin else chmin
-		if region.chunk_min_max[ch] != (chmin_new, chmax_new):
+		if (region.chunk_min_max[ch] != (chmin_new, chmax_new)).any():
 			player.old_chunkpos = None
 		region.chunk_min_max[ch] = (chmin_new, chmax_new)
 
@@ -1563,11 +1580,10 @@ def load_shaders():
 
 def process_chunks():
 	for reg in World.active_regions:
-		while len(reg.to_be_loaded) > 0:
-			pg.event.get()
-			ch = reg.to_be_loaded.pop()
+		if reg.lock:
+			continue
+		while (ch := reg.to_be_loaded.pop(0) if len(reg.to_be_loaded) > 0 else None):
 			reg.preloaded_data[ch] = World.process_chunk(ch + reg.pos)
-
 
 def chunk_thread():
 	try:
@@ -1576,7 +1592,7 @@ def chunk_thread():
 			time.sleep(1)
 	except Exception as e:
 		World.thread_exception = e
-
+		print(e)
 
 def get_schematic(file):
 	raw_json = open(f"schematics/{settings.schematic_pack}/{file}.json").read()
