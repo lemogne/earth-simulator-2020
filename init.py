@@ -1507,7 +1507,7 @@ class World:
 		else:
 			chunk = np.zeros((World.chunk_size, World.height, World.chunk_size))
 			if World.infinite:
-				chunk[:, :World.water_level, :] = 8
+				chunk[:, :World.water_level + 1, :] = 8
 				if coords in World.heightmap:
 					blockmap = (World.y_array <= World.heightmap[coords])
 					chunk[blockmap.transpose(1, 0, 2)] = 3
