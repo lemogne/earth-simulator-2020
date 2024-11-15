@@ -123,13 +123,14 @@ def gen_chunk(coords):
 	surface_map = heights == heightmap_int
 	grass_map = surface_map & (heights > World.water_level + 1) & terrainmap
 	desert_map = (hummap[:, 0, :] < 0.33) & (hummap[:, 1, :] > 0.67)
+	terrain_depth = 6 * hummap[:, 1, :]
 	cold_map = (hummap[:, 1, :] < 0.2)
 	snow_map = grass_map & cold_map
 	grass_map &= ~desert_map & ~cold_map
 	ice_map = water_map & (heights == World.water_level) & cold_map
 	water_map &= ~ice_map
 	sand_map = surface_map & ((heights < World.water_level + 2) | desert_map)
-	dirt_map = block_map & (heights > (heightmap - 3)) & ~surface_map & terrainmap
+	dirt_map = block_map & (heights > (heightmap - terrain_depth)) & ~surface_map & terrainmap
 	sand_map |= dirt_map & desert_map
 	dirt_map &= ~desert_map
 	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map & ~snow_map
