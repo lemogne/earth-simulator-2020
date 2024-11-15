@@ -1,12 +1,14 @@
 from init import *
 
 def render_sky(time_start):
+	glDisable(GL_DEPTH_TEST)
 	World.game_time = settings.starting_time + round(((time.time() - time_start) / settings.day_length) * 1024)
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	glVertexPointer(3, GL_DOUBLE, 0, Sky.vert_list)
 	glTexCoordPointer(2, GL_DOUBLE, 0, Sky.get_tex())
 	glNormalPointer(GL_DOUBLE, 0, Sky.normals)
 	glDrawArrays(GL_TRIANGLES, 0, int(len(Sky.vert_list)))
+	glEnable(GL_DEPTH_TEST)
 
 def render(chat_string):
 	#render blocks
