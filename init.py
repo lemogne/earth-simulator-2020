@@ -1394,10 +1394,10 @@ class World:
 		chmin, chmax = region.chunk_min_max[ch]
 		if block == 0:
 			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / World.chunk_size)
-			chmax_new = region.thorough_chmax(ch) if coords[1] == chmax else chmax
+			chmax_new = region.thorough_chmax(ch) if math.floor(coords[1]) / World.chunk_size >= chmax else chmax
 		else:
 			chmax_new = max(chmin + chmax, math.floor(coords[1]) / World.chunk_size) - chmin
-			chmin_new = region.thorough_chmin(ch) if coords[1] == chmin else chmin
+			chmin_new = region.thorough_chmin(ch) if (math.floor(coords[1]) - 1) / World.chunk_size <= chmin else chmin
 		
 		# Set some heuristic variables to None to trigger a chunk reload
 		if (region.chunk_min_max[ch] != (chmin_new, chmax_new)).any():
