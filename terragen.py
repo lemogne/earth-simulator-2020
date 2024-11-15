@@ -6,8 +6,10 @@ def f(t):
 def get_tree_schem(biome):
 	if biome[1] < 0.3:
 		return "spruce"
-	elif biome[1] < 0.7:
+	elif biome[1] < 0.67:
 		return "tree"
+	elif biome[0] < 0.33:
+		return "desert"
 	else:
 		return "jungle"
 
@@ -161,9 +163,9 @@ def gen_chunk(coords):
 		schem = schemtype[int(tree[3] / 4294967295 * len(schemtype))]
 		dim = schem[0].shape
 		block_under_tree = World.get_block(tree[:3])
-		if block_under_tree in [3, 13] and (biome[0] >= 0.33 or biome[1] <= 0.67):
+		if block_under_tree in [3, 13, 9]:
 			height = World.get_height(tree[[0, 2]])
-			if height < World.water_level:
+			if height < World.water_level + 2:
 				continue
 			rock_const = ((60 / height)**2) - 0.1
 			neighbours = np.array((World.get_height(tree[[0, 2]] - (1, 0)), World.get_height(tree[[0, 2]] + (1, 0)),
