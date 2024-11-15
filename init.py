@@ -875,8 +875,9 @@ class Settings:
 			player.init()
 
 			if imm:
-				mode_2D()
 				World.init()
+				if Settings.graphics_changed:
+					mode_2D()
 			elif Settings.graphics_changed:
 				World.load_chunks(True)
 				process_chunks(True)
