@@ -53,7 +53,7 @@ def run():
 				if not UI.buttons.get_selected() == None:
 					if event.button == 1:
 						UI.buttons.get_selected().run()
-			elif event.type == pg.VIDEORESIZE:
+			elif event.type == pg.VIDEORESIZE and settings.resizeable:
 				mode_3D()
 				Display.init((event.w, event.h))
 				Textures.update_pixel_size()

@@ -25,6 +25,7 @@ texture_pack = "default"
 shader_pack = "default"
 schematic_pack = "default"
 shadow_brightness = 2
+resizeable = False
 
 #PLAYER
 movement_speed = 5.0
