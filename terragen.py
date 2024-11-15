@@ -54,7 +54,7 @@ def gen_heightmaps(coord_list):
 		World.heightmap[t_coords] = heightmap
 
 def gen_chunk(coords):
-	gen_heightmaps(np.array([[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) + coords)
+	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
 	heightmap = World.heightmap[coords]
 
 	# Neighbouring chunks
