@@ -1,7 +1,6 @@
 import pygame as pg
 from pygame.locals import *
-import math, time, struct, os, sys, json, re, random, traceback
-from threading import Thread, local
+import math, time, struct, os, sys, json, re, traceback
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
