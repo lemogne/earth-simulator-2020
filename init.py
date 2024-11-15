@@ -1066,13 +1066,6 @@ class World:
 			else:
 				World.loaded_chunks[ch] = World.preloaded_chunks[ch]
 
-	def render_chunk(chunkData):
-		glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])
-		glTexCoordPointer(2, GL_FLOAT, 32, (c_void_p)(12))
-		glVertexPointer(3, GL_FLOAT, 32, None)
-		glNormalPointer(GL_FLOAT, 32, (c_void_p)(20))
-		glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
-
 	def load_chunk(chunkdata):
 		vert_tex_list = chunkdata[0][0]
 		counter = chunkdata[0][1]
@@ -1488,11 +1481,10 @@ def get_schematic(file):
 	return np.array(json.loads(raw_json))
 
 
-def rnd(p, dx):
-	return (dx < 0) * (p // 1) - (dx > 0) * ((-p) // 1) - p
-
-
 def get_looked_at():
+	def rnd(p, dx):
+		return (dx < 0) * (p // 1) - (dx > 0) * ((-p) // 1) - p
+		
 	rPos = player.pos + Vector(0, player.height, 0)
 	oPos = rPos
 	dt = 0
@@ -1517,36 +1509,7 @@ def rand(seed, dim):
 		nn = (nn * p2) % p1
 		op.append(nn / p1)
 	return np.resize(op, dim)
-
-
-def generate_perlin_noise_2d(shape, res, seed=None):
-	if seed == None:
-		seed = World.seed
-
-	def f(t):
-		return 6 * t**5 - 15 * t**4 + 10 * t**3
-
-	delta = (res[0] / shape[0], res[1] / shape[1])
-	d = (shape[0] // res[0], shape[1] // res[1])
-	grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]].transpose(1, 2, 0) % 1
-	# Gradients
-	angles = 2 * np.pi * rand(seed, (res[0] + 1, res[1] + 1))
-	gradients = np.dstack((np.cos(angles), np.sin(angles)))
-	g00 = gradients[0:-1, 0:-1].repeat(d[0], 0).repeat(d[1], 1)
-	g10 = gradients[1:, 0:-1].repeat(d[0], 0).repeat(d[1], 1)
-	g01 = gradients[0:-1, 1:].repeat(d[0], 0).repeat(d[1], 1)
-	g11 = gradients[1:, 1:].repeat(d[0], 0).repeat(d[1], 1)
-	# Ramps
-	n00 = np.sum(grid * g00, 2)
-	n10 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1])) * g10, 2)
-	n01 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1] - 1)) * g01, 2)
-	n11 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1] - 1)) * g11, 2)
-	# Interpolation
-	t = f(grid)
-	n0 = n00 * (1 - t[:, :, 0]) + t[:, :, 0] * n10
-	n1 = n01 * (1 - t[:, :, 0]) + t[:, :, 0] * n11
-	return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
-
+	
 
 def load_textures(file):
 	textureSurface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
@@ -1564,17 +1527,6 @@ def load_textures(file):
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
 	return (texid, textureSurface)
-
-
-def highlight_block(position):
-	glBindTexture(GL_TEXTURE_2D, 0)
-	glColor3f(0.25, 0.25, 0.25)
-	glBegin(GL_LINES)
-	for i in Cube.edges:
-		for j in Cube.vertices[i]:
-			glVertex3fv((Vector(tuple(j * 1.0078125)) + position).tuple)
-	glEnd()
-	glColor3f(1, 1, 1)
 
 
 def mode_2D():

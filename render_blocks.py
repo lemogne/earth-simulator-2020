@@ -1,5 +1,22 @@
 from init import *
 
+def highlight_block(position):
+	glBindTexture(GL_TEXTURE_2D, 0)
+	glColor3f(0.25, 0.25, 0.25)
+	glBegin(GL_LINES)
+	for i in Cube.edges:
+		for j in Cube.vertices[i]:
+			glVertex3fv((Vector(tuple(j * 1.0078125)) + position).tuple)
+	glEnd()
+	glColor3f(1, 1, 1)
+
+def render_chunk(chunkData):
+	glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])
+	glTexCoordPointer(2, GL_FLOAT, 32, (c_void_p)(12))
+	glVertexPointer(3, GL_FLOAT, 32, None)
+	glNormalPointer(GL_FLOAT, 32, (c_void_p)(20))
+	glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
+
 def render_sky(time_start):
 	glDisable(GL_DEPTH_TEST)
 	World.game_time = settings.starting_time + round(((time.time() - time_start) / settings.day_length) * 1024)
@@ -27,14 +44,14 @@ def render(chat_string):
 	#Load solid blocks
 	for loaded_chunk in World.loaded_chunks:
 		glUniform2i(chunkpos_loc, *loaded_chunk)
-		World.render_chunk(World.loaded_chunks[loaded_chunk][0])
+		render_chunk(World.loaded_chunks[loaded_chunk][0])
 
 	#Load transparent blocks
 	glEnable(GL_BLEND)
 	for loaded_chunk in World.loaded_chunks:
 		if World.loaded_chunks[loaded_chunk][1] != None:
 			glUniform2i(chunkpos_loc, *loaded_chunk)
-			World.render_chunk(World.loaded_chunks[loaded_chunk][1])
+			render_chunk(World.loaded_chunks[loaded_chunk][1])
 	
 	glUniform2i(chunkpos_loc, 0, 0)
 	#Highlight block being looked at
