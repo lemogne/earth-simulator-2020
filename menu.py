@@ -8,10 +8,10 @@ def run():
 	glEnable(GL_BLEND)
 	mode_2D()
 	now = time.time()
-	lastFrame = now
+	last_frame = now
 	while UI.in_menu:
 		now = time.time()
-		if not settings.frame_cap or settings.max_FPS * (now - lastFrame) >= 1:
+		if not settings.frame_cap or settings.max_FPS * (now - last_frame) >= 1:
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			glBegin(GL_QUADS)
 			for i in range(4):
@@ -35,12 +35,12 @@ def run():
 		UI.check_hover(pg.mouse.get_pos())
 		if UI.buttons.is_typing():
 			if UI.buttons.get_input_button() == None:
-				ChatString = UI.input_text(ChatString, start=2)
+				chat_string = UI.input_text(chat_string, start=2)
 				if not UI.buttons.is_typing():
 					try:
-						exec(ChatString[2:])
+						exec(chat_string[2:])
 					except Exception:
-						ChatString = "Invalid Python statement!"
+						chat_string = "Invalid Python statement!"
 						print("Invalid Python statement!")
 			else:
 				UI.buttons.get_input_button().run()
