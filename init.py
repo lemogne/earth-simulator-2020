@@ -368,7 +368,7 @@ class Start_Game:
 		# Determining world seed:
 		# if field is empty, generate random seed; else, try to interpret seed as number. If not possible, display error.
 		if UI.buttons["Seed"].get_text() == "":
-			World.seed = (time.time() % 1) * 2741
+			World.seed = int((time.time() % 1) * 10000000)
 		else:
 			try:
 				World.seed = int(UI.buttons["Seed"].get_text())

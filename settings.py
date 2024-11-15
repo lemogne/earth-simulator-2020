@@ -6,13 +6,14 @@ world_height = 256
 world_size_F = 5
 region_size = 16
 
-heightlim = (2, 150)
+heightlim = (10, 100)
 T_res = (16, 16)
-HL_res = (4, 4)
-V_res = (4, 4)
-G_res = (1, 1)		
+HL_res = (64, 64)
+V_res = (64, 64)
+G_res = (256, 256)		
 
 tree_density = 1 / 128
+water_level = 33
 
 #GRAPHICS
 render_distance = 15		
