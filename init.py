@@ -1439,6 +1439,7 @@ class Display:
 		glEnable(GL_BLEND)
 		glEnableClientState(GL_VERTEX_ARRAY)
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+		glEnableClientState(GL_NORMAL_ARRAY)
 		glClearColor(0.0, 0.0, 0.0, 0.0)
 		load_shaders()
 
