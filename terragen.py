@@ -35,10 +35,10 @@ def gen_terrain():
 	World.chunk_size = settings.chunk_size
 	World.chunk_min_max = dict()
 
-	heightmap = ((generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.Tres) + 1) / 2)
-	levelmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.HLres) + 1) / 2
-	variancemap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.Vres, World.seed + 89128) + 1) / 2
-	generalmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.Gres, World.seed) + 1) / 2
+	heightmap = ((generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.T_res) + 1) / 2)
+	levelmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.HL_res) + 1) / 2
+	variancemap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.V_res, World.seed + 89128) + 1) / 2
+	generalmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.G_res, World.seed) + 1) / 2
 	m1map = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, (128, 128), World.seed) + 1) * 0.003
 	m2map = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, (512, 512), World.seed + 89128) + 1) * 0.001
 
