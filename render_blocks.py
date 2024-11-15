@@ -43,7 +43,8 @@ def render(chat_string):
 
 	#Load solid blocks
 	glMatrixMode(GL_MODELVIEW)
-	
+	glPushMatrix()
+	glTranslatef(128, 128, 128)
 	for loaded_chunk in World.loaded_chunks:
 		glPushMatrix()
 		glTranslatef(loaded_chunk[0] * 16, 0, loaded_chunk[1] * 16)
@@ -64,6 +65,7 @@ def render(chat_string):
 		highlight_block(looked_at // 1)
 
 	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
+	glPopMatrix()
 	mode_2D()
 
 	#Draw block overlay if head inside (non-air) block
@@ -71,8 +73,8 @@ def render(chat_string):
 		glBegin(GL_TRIANGLES)
 		for i in range(6):
 			glTexCoord2fv(Textures.game_blocks[World.get_block(player.pos + Vector(0, player.height, 0))][i])
-			glVertex3f(Cube.vertices[Cube.triangles[0][i]][0] * 2 - 1 -128,
-			           (Cube.vertices[Cube.triangles[0][i]][1] - 0.5) * (Display.centre[0] / Display.centre[1]) * 2 - 128, -127)
+			glVertex2f(Cube.vertices[Cube.triangles[0][i]][0] * 2 - 1,
+			           (Cube.vertices[Cube.triangles[0][i]][1] - 0.5) * (Display.centre[0] / Display.centre[1]) * 2)
 		glEnd()
 
 	#Draw currently selected block texture
