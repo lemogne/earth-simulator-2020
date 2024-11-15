@@ -1450,10 +1450,21 @@ class World:
 			coords_show = coords_transp[solid_mask]
 			light_show = light_transp[solid_mask]
 
-			transp_mask = seethrough[blocks] & (blocks != neighbours[i])
+			seethrough_copy = np.concatenate(([False], seethrough[1:]), 0)
+
+			transp_mask = seethrough_copy[blocks] & (blocks != neighbours[i])
 			coords_show_transp = World.coord_array[transp_mask]
 			blocks_show_transp = blocks[transp_mask]
 			light_show_transp = light_neighb[transp_mask]
+
+			transp_mask2 = (neighbours[i] == 8) & (blocks != neighbours[i])
+			coords_show_transp2 = World.coord_array[transp_mask2]
+			blocks_show_transp2 = neighbours[i][transp_mask2]
+			light_show_transp2 = light_neighb[transp_mask2]
+
+			coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
+			light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
+			blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
 
 			if len(coords_show) > 0:
 				c_show_r = np.repeat(coords_show, 6, 0)
