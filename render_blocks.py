@@ -6,7 +6,7 @@ def highlight_block(position):
 	glBegin(GL_LINES)
 	for i in Cube.edges:
 		for j in Cube.vertices[i]:
-			glVertex3fv((Vector(tuple(j * 1.0078125)) + position).tuple)
+			glVertex3fv((np.array((tuple(j * 1.0078125)) + position)))
 	glEnd()
 	glColor3f(1, 1, 1)
 
@@ -31,7 +31,7 @@ def render_sky(time_start):
 
 def render(chat_string):
 	#render blocks
-	if World.get_block(player.pos + Vector(0, player.height, 0)) == 8:
+	if World.get_block(player.pos + (0, player.height, 0)) == 8:
 		glUseProgram(waterShader)
 	else:
 		glUseProgram(DayNightShader)
@@ -64,17 +64,17 @@ def render(chat_string):
 	
 	glPopMatrix()
 	#Highlight block being looked at
-	if (looked_at := get_looked_at()[0]):
+	if (looked_at := get_looked_at()[0]) is not None:
 		highlight_block(looked_at // 1)
 
 	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
 	mode_2D()
 
 	#Draw block overlay if head inside (non-air) block
-	if World.get_block(player.pos + Vector(0, player.height, 0)) != 0:
+	if World.get_block(player.pos + (0, player.height, 0)) != 0:
 		glBegin(GL_TRIANGLES)
 		for i in range(6):
-			glTexCoord2fv(Textures.game_blocks[World.get_block(player.pos + Vector(0, player.height, 0))][i])
+			glTexCoord2fv(Textures.game_blocks[World.get_block(player.pos + (0, player.height, 0))][i])
 			glVertex2f(Cube.vertices[Cube.triangles[0][i]][0] * 2 - 1,
 			           (Cube.vertices[Cube.triangles[0][i]][1] - 0.5) * (Display.centre[0] / Display.centre[1]) * 2)
 		glEnd()
