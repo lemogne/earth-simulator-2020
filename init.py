@@ -1,6 +1,6 @@
 import pygame as pg
 from pygame.locals import *
-import math, time, struct, os, sys, json, re, random
+import math, time, struct, os, sys, json, re, random, traceback
 from threading import Thread, local
 import numpy as np
 from OpenGL.GL import *
@@ -593,6 +593,8 @@ class Load_World:
 
 			UI.in_menu = False
 			UI.paused = False
+			make_coord_array()
+			print(World.coord_array3.shape)
 
 			UI.buttons["Info"].set_text("World loaded successfully!")
 		except Exception as e:
@@ -1047,13 +1049,13 @@ class Region:
 		self.loaded_chunks = dict()
 		self.to_be_loaded = list()
 		self.preloaded_data = dict()
-		self.chunk_min_max = np.full((settings.region_size, settings.region_size, 2), 0.0)
+		self.chunk_min_max = np.full((World.region_size, World.region_size, 2), 0.0)
 		self.chunks = dict()
 		self.light = dict()
-		self.pos = np.array(pos) * settings.region_size
+		self.pos = np.array(pos) * World.region_size
 		self.chunk_coords = None
 		self.lock = False
-		self.gen_chunks = np.full((settings.region_size, settings.region_size), False)
+		self.gen_chunks = np.full((World.region_size, World.region_size), False)
 
 
 	def __del__(self):
@@ -1072,7 +1074,7 @@ class Region:
 		if self.lock:
 			return
 		if change_pos or self.chunk_coords is None or ForceLoad:
-			self.chunk_coords = np.mgrid[0:settings.region_size, 0:settings.region_size].T[:, :, ::-1]
+			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
 			                                         abs(self.chunk_coords[:, :, 1] - player.chunkpos[2] + self.pos[1]))
 			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
@@ -1131,20 +1133,45 @@ class World:
 	thread_exception = None
 	height = settings.world_height
 	chunk_size = settings.chunk_size
+	heightlim = settings.heightlim
+	water_level = settings.water_level
+	region_size = settings.region_size
+	T_res = settings.T_res
+	HL_res = settings.HL_res
+	V_res = settings.V_res
+	G_res = settings.G_res		
+
+	tree_density_mean = settings.tree_density_mean
+	tree_density_var = settings.tree_density_var
+	tree_res = settings.tree_res
 	heightmap = {}
 	trees = {}
 	regions = {}
 	chunks_to_generate = []
 	active_regions = []
 
+	coord_array = []
+	coord_array3 = []
+
 	def init():
 		World.height = settings.world_height
 		World.chunk_size = settings.chunk_size
 		World.game_time = settings.starting_time
+		World.heightlim = settings.heightlim
+		World.water_level = settings.water_level
+		World.region_size = settings.region_size
+		World.T_res = settings.T_res
+		World.HL_res = settings.HL_res
+		World.V_res = settings.V_res
+		World.G_res = settings.G_res
+
+		World.tree_density_mean = settings.tree_density_mean
+		World.tree_density_var = settings.tree_density_var
+		World.tree_res = settings.tree_res
 
 	def load_chunks(ForceLoad=False):
-		reg_max = (player.chunkpos + settings.render_distance) // settings.region_size
-		reg_min = (player.chunkpos - settings.render_distance) // settings.region_size
+		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
+		reg_min = (player.chunkpos - settings.render_distance) // World.region_size
 		change_pos = (player.old_chunkpos != player.chunkpos).any()
 		change_rot = (player.old_rot != player.rot // 5).any()
 		if change_pos:
@@ -1180,12 +1207,12 @@ class World:
 		return ((vbo, counter), None)
 
 	def get_region(chunkpos):
-		reg_coords = (chunkpos[0] // settings.region_size, chunkpos[1] // settings.region_size)
+		reg_coords = (chunkpos[0] // World.region_size, chunkpos[1] // World.region_size)
 		if reg_coords in World.regions:
 			reg = World.regions[reg_coords]
 		else:
 			reg = None
-		ch = (int(chunkpos[0] % settings.region_size), int(chunkpos[1] % settings.region_size))
+		ch = (int(chunkpos[0] % World.region_size), int(chunkpos[1] % World.region_size))
 		return (reg, ch)
 
 	def process_chunk(chunkpos):
@@ -1230,11 +1257,11 @@ class World:
 			nbWater = neighbours[i] == 8
 			nb_transp = seethrough[neighbours[i]]
 			bWater = blocks[nbWater]
-			cWater = coord_array[nbWater]
+			cWater = World.coord_array[nbWater]
 			lWater = lnb[nbWater]
 
 			b_transp = blocks[nb_transp]
-			c_transp = coord_array[nb_transp]
+			c_transp = World.coord_array[nb_transp]
 			l_transp = lnb[nb_transp]
 
 			SMask = ~seethrough[b_transp]
@@ -1243,7 +1270,7 @@ class World:
 			lShow = l_transp[SMask]
 
 			TMask1 = seethrough[blocks] & (blocks != neighbours[i])
-			cShow_transp = coord_array[TMask1]
+			cShow_transp = World.coord_array[TMask1]
 			bShow_transp = blocks[TMask1]
 			lShow_transp = lnb[TMask1]
 
@@ -1421,20 +1448,18 @@ class World:
 
 		region.chunk_min_max[ch] = (chmin_new, chmax_new)
 
-coord_array = []
-
 
 def make_coord_array():
-	global coord_array, coord_array3
-	coord_array = []
+	global World
+	World.coord_array = []
 	for i in range(World.chunk_size):
-		coord_array.append([])
+		World.coord_array.append([])
 		for j in range(World.height):
-			coord_array[i].append([])
+			World.coord_array[i].append([])
 			for k in range(World.chunk_size):
-				coord_array[i][j].append((i, j, k))
-	coord_array3 = np.array(coord_array)
-	coord_array = np.vstack(coord_array)
+				World.coord_array[i][j].append((i, j, k))
+	World.coord_array3 = np.array(World.coord_array)
+	World.coord_array = np.vstack(World.coord_array)
 
 
 make_coord_array()
@@ -1615,7 +1640,7 @@ def chunk_thread():
 			time.sleep(1)
 	except Exception as e:
 		World.thread_exception = e
-		print(e)
+		print("".join(traceback.format_exc()))
 
 def schematic_lighting(schematic):
 	not_found = np.full((schematic.shape[0], schematic.shape[2]), True)
