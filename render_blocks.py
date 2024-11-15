@@ -60,12 +60,12 @@ def render(chat_string):
 			render_chunk(World.loaded_chunks[loaded_chunk][1])
 			glPopMatrix()
 	
+	glPopMatrix()
 	#Highlight block being looked at
 	if (looked_at := get_looked_at()[0]):
 		highlight_block(looked_at // 1)
 
 	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
-	glPopMatrix()
 	mode_2D()
 
 	#Draw block overlay if head inside (non-air) block
