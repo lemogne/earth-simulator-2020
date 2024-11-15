@@ -447,28 +447,23 @@ class Save_World:
 				for ch in region.chunks:
 					pg.event.get()  # To prevent game window from freezing
 					savefile.write(np.array(ch, dtype=np.uint8).tobytes())  # Writes the chunk coordinates to the file
-					lastblock = None
-					counter = 1
+
+					# Numpy RLE from stackoverflow
+					flat_chunk = region.chunks[ch].transpose((1, 0, 2)).flatten()
+					loc_run_start = np.empty(len(flat_chunk), dtype=bool)
+					loc_run_start[0] = True
+					np.not_equal(flat_chunk[:-1], flat_chunk[1:], out=loc_run_start[1:])
+					run_starts = np.nonzero(loc_run_start)[0]
+					run_values = flat_chunk[loc_run_start]
+					run_lengths = np.diff(np.append(run_starts, len(flat_chunk)))
 
 					# Block counting loop; compresses block data by making a list of (amount of blocks in a row, block ID); saves to file
-					for block in region.chunks[ch].transpose((1, 0, 2)).flatten():
-						if block == lastblock:
-							counter += 1
-						elif lastblock != None:
-							BLpos = Save_World.bytesneeded(counter)
-							if counter > 127:
-								write_bytes(BLpos + 127, 1)
-							write_bytes(counter, BLpos)
-							write_bytes(lastblock, BLblocks)
-							counter = 1
-							lastblock = block
-						else:
-							lastblock = block
-					BLpos = Save_World.bytesneeded(counter)
-					if counter > 127:
-						write_bytes(BLpos + 127, 1)
-					write_bytes(counter, BLpos)
-					write_bytes(lastblock, BLblocks)
+					for counter, block in zip(run_lengths, run_values):
+						BLpos = Save_World.bytesneeded(counter)
+						if counter > 127:
+							write_bytes(BLpos + 127, 1)
+						write_bytes(counter, BLpos)
+						write_bytes(block, BLblocks)
 				i = savefile.tell()
 					
 
