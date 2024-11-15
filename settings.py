@@ -12,7 +12,7 @@ T_res = (16, 16)
 HL_res = (64, 64)
 G_res = (256, 256)		
 C_res = (4096, 4096)
-B_res = (1024, 1024)
+B_res = (2048, 2048)
 
 tree_density_mean = 1 / 64
 tree_density_var = 1.1
