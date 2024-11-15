@@ -404,11 +404,15 @@ def save_world():
 	global game_blocks
 	try:
 		raw_region_data = {}
-		for reg in World.region_table:
-			if reg not in World.regions:
-				raw_region_data[reg] = Load_World.load_region_raw(reg)
-
+		sorted_reg_table = list(World.region_table.keys())
+		sorted_reg_table.sort(key = lambda x: World.region_table[x][0])
 		savefile = World.file
+		savefile.seek(0, 2)
+		filesize = savefile.tell()
+		for i, reg in enumerate(sorted_reg_table):
+			if reg not in World.regions:
+				raw_region_data[reg] = Load_World.load_region_raw(reg, sorted_reg_table[i + 1] if i + 1 < len(sorted_reg_table) else filesize)
+
 		savefile.seek(0, 0)
 		savefile.truncate(0)
 		savefile.write(b"ES20\x00v0.4")  # Write file header containing game version
@@ -794,34 +798,10 @@ class Load_World:
 			region.gen_chunks[ch] = True
 
 
-	def load_region_raw(reg):
+	def load_region_raw(reg, next_reg):
 		readfile = World.file
 		readfile.seek(World.region_table[reg][0])
-		BLblocks = World.bytes_for_block_ID
-		
-		region_buffer = b""
-		chunk_length = World.chunk_size**2 * World.height
-
-		# Chunk reading loop (reads until end of block data flag is read)
-		for _ in range(World.region_table[reg][1]):
-			#pg.event.get()  # prevents window from freezing
-
-			region_buffer += readfile.read(2)
-			# reads blocks until chunk is filled
-			i = 0
-			while i < chunk_length:
-				kr = readfile.read(1)
-				region_buffer += kr
-				k = int.from_bytes(kr, "little")
-				if k > 127:
-					nr = readfile.read(k - 127)
-					region_buffer += nr
-					n = int.from_bytes(nr, "little")
-				else:
-					n = k
-				blockr = readfile.read(BLblocks)
-				region_buffer += blockr
-				i += n
+		region_buffer = readfile.read(World.region_table[next_reg][0] - World.region_table[reg][0])
 		return (World.region_table[reg][1], region_buffer)
 
 
