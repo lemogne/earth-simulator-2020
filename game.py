@@ -39,24 +39,7 @@ while 1:
 				else:
 					ds = player.mv + (0,0,0)
 
-				# Check for block collisions
-				segments = math.ceil(np.linalg.norm(ds * delta_t))
-				for j in range(segments):
-					for i in range(3):
-						if player.check_in_block(i, delta_t / segments, ds, temp_pos):
-							if i == 1:
-								offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
-							else:
-								offset = settings.player_width
-							offset += settings.hitbox_epsilon
-							if ds[i] < 0:
-								temp_pos[i] = math.ceil(temp_pos[i]) - offset
-							elif ds[i] > 0:
-								temp_pos[i] = math.floor(temp_pos[i]) + offset
-							player.pos[i] = temp_pos[i]
-							player.mv[i] = 0
-							ds[i] = 0
-					temp_pos -= ds * (delta_t / segments)
+				collision_check(temp_pos, ds, delta_t)
 										
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 			player.rotate(mouse_pos)
