@@ -1229,7 +1229,7 @@ class Region:
 	chunk_min_max = {}
 	chunks = {}
 	light = {}
-	pos = (0, 0)
+	pos = np.array((0, 0))
 	chunk_coords = None
 	in_view = None
 	chunk_y_lims = None
@@ -1310,7 +1310,7 @@ class Region:
 					self.to_be_loaded.append(ch)
 			else:
 				self.loaded_chunks[ch] = self.preloaded_chunks[ch]
-		self.to_be_loaded = sorted(self.to_be_loaded, key=lambda x: settings.chunk_distance(x - player.chunkpos[[0, 2]]))
+		self.to_be_loaded.sort(key = lambda x: settings.chunk_distance(self.pos + x - player.chunkpos[[0, 2]]))
 		
 
 	# TODO: possible error: sudden jump in y level between neighbouring chunks
@@ -1343,6 +1343,7 @@ class World:
 	HL_res = settings.HL_res
 	V_res = settings.V_res
 	G_res = settings.G_res		
+	C_res = settings.C_res
 
 	tree_density_mean = settings.tree_density_mean
 	tree_density_var = settings.tree_density_var
@@ -1372,6 +1373,7 @@ class World:
 		World.HL_res = settings.HL_res
 		World.V_res = settings.V_res
 		World.G_res = settings.G_res
+		World.C_res = settings.C_res
 
 		World.tree_density_mean = settings.tree_density_mean
 		World.tree_density_var = settings.tree_density_var
@@ -1401,6 +1403,7 @@ class World:
 					World.regions[(i, j)] = Region((i, j))
 				World.regions[(i, j)].load_chunks(change_pos, change_rot, ForceLoad)
 				World.active_regions.append(World.regions[(i, j)])
+		World.active_regions.sort(key = lambda x: settings.chunk_distance(x.pos - player.chunkpos[[0, 2]]))
 
 	def load_chunk(chunkdata):
 		vert_tex_list = chunkdata[0][0]

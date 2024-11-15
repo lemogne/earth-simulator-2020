@@ -33,6 +33,9 @@ def gen_trees(coords):
 
 
 def gen_heightmaps(coord_list):
+	def combine_terrain(l_map, v_map):
+		return (l_map * (v_map ** 2)) ** 0.5
+
 	for coords in coord_list:
 		t_coords = tuple(coords)
 		if t_coords in World.heightmap:
@@ -41,21 +44,28 @@ def gen_heightmaps(coord_list):
 		x = np.arange(World.chunk_size) + coords[1] * World.chunk_size
 		z = np.arange(World.chunk_size) + coords[0] * World.chunk_size
 
-		heightmap = (noise.noise2array(x / World.T_res[0], z / World.T_res[1]) + 1) / 2
-		levelmap = (noise.noise2array(x / World.HL_res[0], z / World.HL_res[1]) + 1) / 2
-		variancemap = (noise.noise2array((x / World.V_res[0]) - 36742.47, (z / World.V_res[1]) + 478234.389) + 1) / 2
-		generalmap = (noise.noise2array(x / World.G_res[0], z / World.G_res[1]) + 1) / 2
-		m1map = (noise.noise2array(x * 0.25, z * 0.25) + 1) * 0.003
-		m2map = (noise.noise2array(x, z) + 1) * 0.001
+		m0_map = (noise.noise2array(x * 0.125, z * 0.125) + 1) * 0.04
+		t_map = (noise.noise2array(x / World.T_res[0], z / World.T_res[1]) + 1) / 2
+		tv_map = (noise.noise2array((x / World.T_res[0]) - 36742.47, (z / World.T_res[1]) + 478234.389) + 1) / 2
+		hl_map = (noise.noise2array(x / World.HL_res[0], z / World.HL_res[1]) + 1) / 2
+		hlv_map = (noise.noise2array((x / World.HL_res[0]) - 36742.47, (z / World.HL_res[1]) + 478234.389) + 1) / 2
+		g_map = (noise.noise2array(x / World.G_res[0], z / World.G_res[1]) + 1) / 2
+		gv_map = (noise.noise2array((x / World.G_res[0]) - 36742.47, (z / World.G_res[1]) + 478234.389) + 1) / 2
+		c_map = (noise.noise2array(x / World.C_res[0], z / World.C_res[1]) + 1) / 2
+		cv_map = (noise.noise2array((x / World.C_res[0]) - 36742.47, (z / World.C_res[1]) + 478234.389) + 1) / 2
+		m1_map = (noise.noise2array(x * 0.25, z * 0.25) + 1) * 0.004
+		m2_map = (noise.noise2array(x, z) + 1) * 0.002
 
-		heightmap *= variancemap**2
-		heightmap **= 0.5
-		heightmap += levelmap
-		heightmap /= 2
-		heightmap += 2 * generalmap
-		heightmap /= 3
-		heightmap += m1map + m2map
-		heightmap /= 1.008
+		heightmap = \
+			  0.24 * f(combine_terrain(t_map, hlv_map)) \
+			+ 0.29 * f(combine_terrain(hl_map, gv_map)) \
+			+ 0.24 * f(combine_terrain(g_map, cv_map)) \
+			+ 0.19 * f(c_map)
+		heightmap += 0.08 * f(combine_terrain(m0_map, tv_map))
+		heightmap /= 1.08
+		heightmap += m1_map + m2_map
+		heightmap /= 1.006
+
 		heightmap = f(heightmap)	# Push values further towards extremes (else the height values are too close to the mean)
 		heightmap = (heightmap * (World.heightlim[1] - World.heightlim[0]) + World.heightlim[0])
 		World.heightmap[t_coords] = heightmap
