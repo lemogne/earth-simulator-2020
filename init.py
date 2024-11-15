@@ -829,6 +829,7 @@ class Load_World:
 		try:
 			worldlist = os.listdir("worlds")
 			worlds = list(filter(lambda x: (x[-4:] == ".esw"), worldlist))
+			worlds.sort(key=lambda x: -os.path.getmtime("worlds/" + x))
 			Load_World.worlds = [x[:-4] for x in worlds]
 
 		except FileNotFoundError:
