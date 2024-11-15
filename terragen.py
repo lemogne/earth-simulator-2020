@@ -98,8 +98,8 @@ def gen_chunk(coords):
 		block_map = heights <= heightmap
 	water_map = (heights > heightmap) & (heights <= World.water_level)
 	surface_map = heights == heightmap_int
-	grass_map = surface_map & (heights > 34) & terrainmap
-	sand_map = surface_map & (heights < 35)
+	grass_map = surface_map & (heights > World.water_level + 1) & terrainmap
+	sand_map = surface_map & (heights < World.water_level + 2)
 	dirt_map = block_map & (heights > (heightmap - 3)) & ~surface_map & terrainmap
 	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
 
