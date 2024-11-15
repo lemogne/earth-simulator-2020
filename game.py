@@ -125,7 +125,9 @@ while 1:
 							if (looked_at := get_looked_at()[0]) is not None:
 								settings.current_block = World.get_block(looked_at)
 						elif event.button == 3:
-							World.set_block(get_looked_at()[1], settings.current_block)
+							looked_at = get_looked_at()[1]
+							if looked_at is not None and player.not_in_hitbox(looked_at):
+								World.set_block(looked_at, settings.current_block)
 				elif event.type == pg.VIDEORESIZE and settings.resizeable:
 					Display.init((event.w, event.h))
 					Textures.update_pixel_size()
