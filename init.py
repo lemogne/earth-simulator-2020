@@ -577,9 +577,9 @@ class Load_World:
 
 			elif version in [b"v0.1", b"v0.2"]:
 				UI.buttons["Info"].set_text(
-					f"This world is from version {str(version, 'ASCII')} and uses an old format."\
-					"Please convert it by re-saving it in this version."\
-					"Worlds in this format will not be supported much longer."
+					f"This world is from version {str(version, 'ASCII')} and uses an old format. "\
+					"Please convert it by re-saving it in this version. "\
+					"Worlds in this format will not be supported much longer. "
 				)
 				print(UI.buttons["Info"].get_text())
 				readfile.seek(0, 0)
@@ -607,9 +607,8 @@ class Load_World:
 					pg.event.get()  #prevents window from freezing
 					ChBuffer = []
 
-					chunk = (int.from_bytes(data[i:i + BLch], "little",
-										signed=True), int.from_bytes(data[i + BLch:i + 2 * BLch], "little",
-																	signed=True))  #Chunk position
+					chunk = (int.from_bytes(data[i:i + BLch], "little", signed=True), 
+					         int.from_bytes(data[i + BLch:i + 2 * BLch], "little", signed=True))  # Chunk position
 					i += BLch * 2
 
 					# reads blocks until chunk end flag is read
@@ -688,18 +687,17 @@ class Load_World:
 		region = World.regions[reg]
 		readfile = World.file
 		readfile.seek(World.region_table[reg][0])
-		BLch = Save_World.bytesneeded(World.region_size)
 		BLblocks, BLpos = World.file_byte_sizes
 
 		# Chunk reading loop (reads until end of block data flag is read)
 		for _ in range(World.region_table[reg][1]):
-			pg.event.get()  #prevents window from freezing
+			pg.event.get()  # prevents window from freezing
 
 			chunk_length = World.chunk_size**2 * World.height
 			chunk_buffer = np.zeros(chunk_length)
 
-			ch = (int.from_bytes(readfile.read(BLch), "little", signed=True), 
-			      int.from_bytes(readfile.read(BLch), "little", signed=True))  # Chunk position
+			ch = (int.from_bytes(readfile.read(1), "little", signed=True), 
+			      int.from_bytes(readfile.read(1), "little", signed=True))  # Chunk position
 
 			# reads blocks until chunk is filled
 			i = 0
