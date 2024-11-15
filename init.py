@@ -53,22 +53,22 @@ def toggle_menu():
 
 class Button_Box:
 	type = np.array([
-		[
-			((0, 1), (1, 1), (1, 0.875), (0, 0.875)),  #Long Button
-			((0, 0.75), (1, 0.75), (1, 0.625), (0, 0.625))
-		],
-		[
-			((0, 0.625), (1, 0.625), (1, 0.5), (0, 0.5)),  #Long Textbox
-			((0, 0.375), (1, 0.375), (1, 0.25), (0, 0.25))
-		],
-		[
-			((0, 0.875), (0.5, 0.875), (0.5, 0.75), (0, 0.75)),  #Short Button
-			((0.5, 0.875), (1, 0.875), (1, 0.75), (0.5, 0.75))
-		],
-		[
-			((0, 0.5), (0.5, 0.5), (0.5, 0.375), (0, 0.375)),  #Short Textbox
-			((0.5, 0.5), (1, 0.5), (1, 0.375), (0.5, 0.375))
-		]
+	    [
+	        ((0, 1), (1, 1), (1, 0.875), (0, 0.875)),  #Long Button
+	        ((0, 0.75), (1, 0.75), (1, 0.625), (0, 0.625))
+	    ],
+	    [
+	        ((0, 0.625), (1, 0.625), (1, 0.5), (0, 0.5)),  #Long Textbox
+	        ((0, 0.375), (1, 0.375), (1, 0.25), (0, 0.25))
+	    ],
+	    [
+	        ((0, 0.875), (0.5, 0.875), (0.5, 0.75), (0, 0.75)),  #Short Button
+	        ((0.5, 0.875), (1, 0.875), (1, 0.75), (0.5, 0.75))
+	    ],
+	    [
+	        ((0, 0.5), (0.5, 0.5), (0.5, 0.375), (0, 0.375)),  #Short Textbox
+	        ((0.5, 0.5), (1, 0.5), (1, 0.375), (0.5, 0.375))
+	    ]
 	])
 	vertices_long = np.array(((-1, 0.125), (1, 0.125), (1, -0.125), (-1, -0.125)))
 	vertices_short = np.array(((-0.5, 0.125), (0.5, 0.125), (0.5, -0.125), (-0.5, -0.125)))
@@ -171,8 +171,7 @@ class UI:
 		column_line_array = np.array((column, line)).T
 		column_line_tiled = np.tile(column_line_array, (1, 4)).reshape((len(text_array), 4, 2))
 
-		char_index = np.array(
-		    (text_array & 15, ((Textures.texttable_height << 4) - 1 - text_array) >> 4)).T
+		char_index = np.array((text_array & 15, ((Textures.texttable_height << 4) - 1 - text_array) >> 4)).T
 		tiled_chars = np.tile(char_index, (1, 4)).reshape((len(text_array), 4, 2))
 		tex = ((tiled_chars + character_coords) / (16, Textures.texttable_height)).ravel()
 		vert = (loc + ((character_coords + chardim * column_line_tiled) * size) *
@@ -235,8 +234,7 @@ class UI:
 				box = UI.buttons[button].get_box()
 				for i in range(4):
 					glTexCoord2fv(texture[int(UI.buttons.is_selected(button))][i])
-					glVertex2f((box[i] * settings.button_scale)[0] *
-					           (Display.centre[1] / Display.centre[0]),
+					glVertex2f((box[i] * settings.button_scale)[0] * (Display.centre[1] / Display.centre[0]),
 					           (box[i] * settings.button_scale)[1])
 		glEnd()
 
@@ -245,15 +243,15 @@ class UI:
 			button = UI.buttons[button_]
 			box = button.get_box()
 			if button.has_texture() and button.is_text_box():
-				UI.write(button.get_text(), ((box[0] * settings.button_scale + 0.05)[0] *
-				                             (Display.centre[1] / Display.centre[0]),
-				                             (box[0] * settings.button_scale - 0.1)[1]),
+				UI.write(button.get_text(),
+				         ((box[0] * settings.button_scale + 0.05)[0] * (Display.centre[1] / Display.centre[0]),
+				          (box[0] * settings.button_scale - 0.1)[1]),
 				         0.05,
 				         color=(0, 0, 0))
 			else:
-				UI.write(button.get_text(), ((box[0] * settings.button_scale + 0.05)[0] *
-				                             (Display.centre[1] / Display.centre[0]),
-				                             (box[0] * settings.button_scale - 0.1)[1]), 0.05)
+				UI.write(button.get_text(),
+				         ((box[0] * settings.button_scale + 0.05)[0] * (Display.centre[1] / Display.centre[0]),
+				          (box[0] * settings.button_scale - 0.1)[1]), 0.05)
 
 	def type_button(name, var, type_):
 		UI.buttons.set_input_button(name)
@@ -377,12 +375,10 @@ class Save_World:
 		name = UI.buttons["Name"].get_text()
 		try:
 
-			savefile = open(f"worlds/{name}.esw",
-			                "wb")  #Create/overwrite world file as given by user input
+			savefile = open(f"worlds/{name}.esw", "wb")  #Create/overwrite world file as given by user input
 			savefile.write(b"ES20\x00v0.2\x00")  #Write file header containing game version
 
-			writeBits = lambda data, bits: savefile.write(
-			    np.array(data).astype('V' + str(bits)).tobytes())
+			writeBits = lambda data, bits: savefile.write(np.array(data).astype('V' + str(bits)).tobytes())
 
 			#Calculating bytes needed to save world data; saving that information to the file
 			BLblocks = bytesneeded(len(game_blocks))
@@ -422,8 +418,7 @@ class Save_World:
 			savefile.write(b"\x00\x00\x00\x00\x00\x00")
 
 			#Saves important world global variables like the seed or the time
-			savefile.write(
-			    np.array([World.seed, settings.tree_density], dtype=np.float32).tobytes())
+			savefile.write(np.array([World.seed, settings.tree_density], dtype=np.float32).tobytes())
 			savefile.write(np.array(World.game_time, dtype=np.int32).tobytes())
 			savefile.close()
 
@@ -492,8 +487,7 @@ class Load_World:
 				print("This file is not a world!")
 				return
 			elif data[5:9] not in [b"v0.1", b"v0.2"]:
-				UI.buttons["Info"].set_text(f"The version of the world, " +
-				                            str(data[5:9], "ASCII") +
+				UI.buttons["Info"].set_text(f"The version of the world, " + str(data[5:9], "ASCII") +
 				                            " is not compatible with this version!")
 				print(UI.buttons["Info"].get_text())
 				return
@@ -518,9 +512,9 @@ class Load_World:
 				pg.event.get()  #prevents window from freezing
 				ChBuffer = []
 
-				ch = (int.from_bytes(data[i:i + BLch], "little", signed=True),
-				      int.from_bytes(data[i + BLch:i + 2 * BLch], "little",
-				                     signed=True))  #Chunk position
+				ch = (int.from_bytes(data[i:i + BLch], "little",
+				                     signed=True), int.from_bytes(data[i + BLch:i + 2 * BLch], "little",
+				                                                  signed=True))  #Chunk position
 				i += BLch * 2
 
 				#reads blocks until chunk end flag is read
@@ -531,9 +525,8 @@ class Load_World:
 
 				#Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
 				try:
-					World.chunks[ch] = np.reshape(
-					    np.array(ChBuffer),
-					    (World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
+					World.chunks[ch] = np.reshape(np.array(ChBuffer),
+					                              (World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
 				except ValueError:
 					UI.buttons["Info"].set_text("World file corrupted!")
 					print("World file corrupted!")
@@ -694,15 +687,11 @@ class Settings:
 		imm = UI.in_menu
 		if len(Settings.variables) > 0:
 			global unicode, game_blocks, seethrough
-			game_blocks = json.loads(
-			    open(f"textures/{settings.texture_pack}/texturing.json").read())
-			seethrough = np.array(
-			    json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
+			game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
+			seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
 			glDeleteTextures(
 			    5,
-			    np.array(
-			        [Textures.ui, Textures.logo, Textures.text, Textures.terrain,
-			         Textures.title])[:, 0])
+			    np.array([Textures.ui, Textures.logo, Textures.text, Textures.terrain, Textures.title])[:, 0])
 			if not imm:
 				plcA = np.array(list(World.preloaded_chunks.values()), dtype="object")
 				plcA = np.array(list(plcA[plcA != None]))
@@ -739,26 +728,16 @@ class Settings:
 		UI.type_button("MSValue", "mouse_sensitivity", float)
 
 	buttons = Interface({
-	    "Cancel":
-	    Button((0.67, -0.8), "Cancel", False, True, cancel),
-	    "OK":
-	    Button((-0.67, -0.8), "OK", False, True, apply),
-	    "TPLabel":
-	    Button((-0.67, -0.5), "Texture Pack", None, True),
-	    "TPValue":
-	    Button((0.67, -0.5), settings.texture_pack, True, True, tpack),
-	    "FSLabel":
-	    Button((-0.67, -0.2), "Fullscreen", None, True),
-	    "FSValue":
-	    Button((0.67, -0.2), str(settings.fullscreen), False, True, fulls),
-	    "RDLabel":
-	    Button((-0.67, 0.1), "Render Distance", None, True),
-	    "RDValue":
-	    Button((0.67, 0.1), str(settings.render_distance), True, True, rendD),
-	    "MSLabel":
-	    Button((-0.67, 0.4), "Mouse Sensitivity", None, True),
-	    "MSValue":
-	    Button((0.67, 0.4), str(settings.mouse_sensitivity), True, True, mouseS)
+	    "Cancel": Button((0.67, -0.8), "Cancel", False, True, cancel),
+	    "OK": Button((-0.67, -0.8), "OK", False, True, apply),
+	    "TPLabel": Button((-0.67, -0.5), "Texture Pack", None, True),
+	    "TPValue": Button((0.67, -0.5), settings.texture_pack, True, True, tpack),
+	    "FSLabel": Button((-0.67, -0.2), "Fullscreen", None, True),
+	    "FSValue": Button((0.67, -0.2), str(settings.fullscreen), False, True, fulls),
+	    "RDLabel": Button((-0.67, 0.1), "Render Distance", None, True),
+	    "RDValue": Button((0.67, 0.1), str(settings.render_distance), True, True, rendD),
+	    "MSLabel": Button((-0.67, 0.4), "Mouse Sensitivity", None, True),
+	    "MSValue": Button((0.67, 0.4), str(settings.mouse_sensitivity), True, True, mouseS)
 	})
 
 
@@ -787,8 +766,8 @@ class Vector:
 			self.tuple = tup[0].tuple
 		else:
 			for n in tup:
-				if not (type(n) is int or type(n) is float or type(n) is np.ndarray
-				        or type(n) is np.int_ or type(n) is np.float_):
+				if not (type(n) is int or type(n) is float or type(n) is np.ndarray or type(n) is np.int_
+				        or type(n) is np.float_):
 					raise TypeError
 			self.tuple = tuple(tup)
 		self.len = len(tup)
@@ -853,8 +832,7 @@ class Vector:
 		elif type(b) is Vector or type(b) is tuple:
 			if len(self) == 3 and len(b) == 3:
 				temp = [
-				    self[2] * b[1] - self[1] * b[2], self[0] * b[2] - self[2] * b[0],
-				    self[1] * b[0] - self[0] * b[1]
+				    self[2] * b[1] - self[1] * b[2], self[0] * b[2] - self[2] * b[0], self[1] * b[0] - self[0] * b[1]
 				]
 			else:
 				raise ValueError
@@ -933,14 +911,11 @@ class Vector:
 
 
 class Cube:
-	vertices = np.array(
-	    ((1, 1, 1), (1, 1, 0), (1, 0, 0), (1, 0, 1), (0, 1, 1), (0, 0, 0), (0, 0, 1), (0, 1, 0)))
-	edges = np.array(((0, 1), (0, 3), (0, 4), (1, 2), (1, 7), (2, 5), (2, 3), (3, 6), (4, 6),
-	                  (4, 7), (5, 6), (5, 7)))
-	quads = np.array(
-	    ((5, 7, 1, 2), (3, 0, 4, 6), (2, 1, 0, 3), (6, 4, 7, 5), (7, 4, 0, 1), (5, 2, 3, 6)))
-	triangles = np.array(((5, 7, 1, 5, 1, 2), (3, 0, 4, 3, 4, 6), (2, 1, 0, 2, 0, 3),
-	                      (6, 4, 7, 6, 7, 5), (7, 4, 0, 7, 0, 1), (5, 2, 3, 5, 3, 6)))
+	vertices = np.array(((1, 1, 1), (1, 1, 0), (1, 0, 0), (1, 0, 1), (0, 1, 1), (0, 0, 0), (0, 0, 1), (0, 1, 0)))
+	edges = np.array(((0, 1), (0, 3), (0, 4), (1, 2), (1, 7), (2, 5), (2, 3), (3, 6), (4, 6), (4, 7), (5, 6), (5, 7)))
+	quads = np.array(((5, 7, 1, 2), (3, 0, 4, 6), (2, 1, 0, 3), (6, 4, 7, 5), (7, 4, 0, 1), (5, 2, 3, 6)))
+	triangles = np.array(((5, 7, 1, 5, 1, 2), (3, 0, 4, 3, 4, 6), (2, 1, 0, 2, 0, 3), (6, 4, 7, 6, 7, 5),
+	                      (7, 4, 0, 7, 0, 1), (5, 2, 3, 5, 3, 6)))
 	sides = np.array(((1, 0), (1, 1), (0, 1), (1, 0), (0, 1), (0, 0)))
 	normals = np.array(((0, 0, 1), (0, 0, -1), (-1, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 0)))
 
@@ -967,20 +942,24 @@ class Player:
 	def do_tick(self, dt):
 		if not (UI.paused or UI.buttons.is_typing()):
 			self.old_pos = self.pos + (0, 0, 0)
+			block_under = World.get_block(self.pos - (0, 0.01, 0))
 			#Calculate movement vector based on key presses and environment
 			keystates = pg.key.get_pressed()
 			accel = Vector(0.0, 0.0, 0.0)
 			forward = (keystates[pg.K_w] - keystates[pg.K_s])
 			sideways = (keystates[pg.K_a] - keystates[pg.K_d])
+			downward = (keystates[pg.K_LSHIFT] - keystates[pg.K_SPACE])
 			if forward and sideways:
 				forward /= 1.41421356237
 				sideways /= 1.41421356237
 			accel[0] = forward * self.norm[0] + sideways * self.norm[2]
+			accel[1] = downward * settings.jump_height * (bool(block_under != 0) or self.flying or self.mv[1] == 0)
 			accel[2] = forward * self.norm[2] - sideways * self.norm[0]
 			if self.flying:
 				accel *= (settings.flying_speed / settings.movement_speed)
-
-			block_under = World.get_block(self.pos - (0, 0.1, 0))
+				self.mv[1] = 0
+			else:
+				accel[1] += dt * settings.gravity
 
 			friction = 0.6
 			if block_under == 14:
@@ -988,16 +967,14 @@ class Player:
 			elif block_under == 0:
 				friction = 0.2
 
-			self.mv[0] = self.mv[0] * (1 - friction) + accel[0] * friction
-			self.mv[2] = self.mv[2] * (1 - friction) + accel[2] * friction
+			density = 1
+			in_water = (World.get_block(self.pos) == 8)
+			if in_water:
+				density = 0.5
 
-			# TODO: simplify / prettify
-			self.mv[1] = float((keystates[pg.K_LSHIFT] - keystates[pg.K_SPACE]) *
-			                   settings.jump_height * ((self.mv[1] == 0 or self.flying) +
-			                                           (World.get_block(self.pos) == 8) * 0.2) *
-			                   (1 + self.flying) + ((self.mv[1] + dt * settings.gravity) /
-			                                        (1 + (World.get_block(self.pos) == 8))) *
-			                   (not self.flying))
+			self.mv[0] = self.mv[0] * (1 - friction) + accel[0] * friction
+			self.mv[1] = (self.mv[1] + accel[1]) * density
+			self.mv[2] = self.mv[2] * (1 - friction) + accel[2] * friction
 
 			# Check for block collisions
 			segments = math.ceil(abs(self.mv))
@@ -1022,8 +999,7 @@ class Player:
 	def check_in_block(self, dim, dt, mv):
 		# TODO: optimise!!!
 		hitbox_min = self.pos - Vector(settings.player_width, 0, settings.player_width)
-		hitbox_max = self.pos + Vector(settings.player_width, settings.player_height,
-		                               settings.player_width)
+		hitbox_max = self.pos + Vector(settings.player_width, settings.player_height, settings.player_width)
 
 		if mv[dim] > 0:
 			hitbox_min[dim] -= mv[dim] * dt
@@ -1051,9 +1027,8 @@ class Player:
 			if not mouse_pos == Display.centre:
 				m_x = mouse_pos[0] - Display.centre[0]
 				m_y = Display.centre[1] - mouse_pos[1]
-				rv = Vector(
-				    max(min((m_y * settings.mouse_sensitivity), 90 - self.rot[0]),
-				        -90 - self.rot[0]), (m_x * settings.mouse_sensitivity), 0)
+				rv = Vector(max(min((m_y * settings.mouse_sensitivity), 90 - self.rot[0]), -90 - self.rot[0]),
+				            (m_x * settings.mouse_sensitivity), 0)
 				self.rot += rv
 				pg.mouse.set_pos(Display.centre)
 			else:
@@ -1094,8 +1069,7 @@ class World:
 			chunk_distance = settings.chunk_distance(abs(chunk_coords[:, 0] - player.chunkpos[0]),
 			                                         abs(chunk_coords[:, 1] - player.chunkpos[2]))
 			chunk_coords = chunk_coords[chunk_distance <= settings.render_distance]
-			chunk_y_lims = np.array(list(
-			    World.chunk_min_max.values()))[chunk_distance <= settings.render_distance]
+			chunk_y_lims = np.array(list(World.chunk_min_max.values()))[chunk_distance <= settings.render_distance]
 			player.old_rot = None
 		if ForceLoad:
 			in_view = np.full(shape=len(chunk_coords), fill_value=True)
@@ -1125,8 +1099,7 @@ class World:
 		glBindBuffer(GL_ARRAY_BUFFER, vbo)
 		glBufferData(GL_ARRAY_BUFFER,
 		             len(vert_tex_list) * types[settings.gpu_data_type][3],
-		             (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list),
-		             GL_STATIC_DRAW)
+		             (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), GL_STATIC_DRAW)
 
 		if chunkdata[1] != None:
 			vert_tex_list = chunkdata[1][0]
@@ -1135,8 +1108,7 @@ class World:
 			glBindBuffer(GL_ARRAY_BUFFER, vbo_transp)
 			glBufferData(GL_ARRAY_BUFFER,
 			             len(vert_tex_list) * types[settings.gpu_data_type][3],
-			             (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list),
-			             GL_STATIC_DRAW)
+			             (types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), GL_STATIC_DRAW)
 			return ((vbo, counter), (vbo_transp, counter_transp))
 		return ((vbo, counter), None)
 
@@ -1147,29 +1119,19 @@ class World:
 
 		# Shifts 3D block array by +/-1 in each direction to determine neighbour
 		neighbours = [
-		    np.dstack(((World.chunk_data((chunkpos[0], chunkpos[1] - 1))[:, :,
-		                                                                 -1:]), chunk[:, :, :-1])),
-		    np.dstack((chunk[:, :, 1:], (World.chunk_data((chunkpos[0], chunkpos[1] + 1))[:, :,
-		                                                                                  0:1]))),
-		    np.vstack((chunk[1:, :, :], (World.chunk_data(
-		        (chunkpos[0] + 1, chunkpos[1]))[0:1, :, :]))),
-		    np.vstack(((World.chunk_data(
-		        (chunkpos[0] - 1, chunkpos[1]))[-1:, :, :]), chunk[:-1, :, :])),
-		    np.pad(chunk, ((0, 0), (0, 1), (0, 0)), mode='constant', constant_values=constV)[:,
-		                                                                                     1:, :],
-		    np.pad(chunk, ((0, 0), (1, 0), (0, 0)), mode='constant',
-		           constant_values=constV)[:, :-1, :]
+		    np.dstack(((World.chunk_data((chunkpos[0], chunkpos[1] - 1))[:, :, -1:]), chunk[:, :, :-1])),
+		    np.dstack((chunk[:, :, 1:], (World.chunk_data((chunkpos[0], chunkpos[1] + 1))[:, :, 0:1]))),
+		    np.vstack((chunk[1:, :, :], (World.chunk_data((chunkpos[0] + 1, chunkpos[1]))[0:1, :, :]))),
+		    np.vstack(((World.chunk_data((chunkpos[0] - 1, chunkpos[1]))[-1:, :, :]), chunk[:-1, :, :])),
+		    np.pad(chunk, ((0, 0), (0, 1), (0, 0)), mode='constant', constant_values=constV)[:, 1:, :],
+		    np.pad(chunk, ((0, 0), (1, 0), (0, 0)), mode='constant', constant_values=constV)[:, :-1, :]
 		]
 		neighbours_light = [
-		    np.hstack(((World.light_data(
-		        (chunkpos[0], chunkpos[1] - 1))[:, -1:]), chunk_light[:, :-1])),
-		    np.hstack((chunk_light[:, 1:], (World.light_data(
-		        (chunkpos[0], chunkpos[1] + 1))[:, 0:1]))),
-		    np.vstack((chunk_light[1:, :], (World.light_data(
-		        (chunkpos[0] + 1, chunkpos[1]))[0:1, :]))),
-		    np.vstack(((World.light_data(
-		        (chunkpos[0] - 1, chunkpos[1]))[-1:, :]), chunk_light[:-1, :])), chunk_light - 1,
-		    chunk_light + 1
+		    np.hstack(((World.light_data((chunkpos[0], chunkpos[1] - 1))[:, -1:]), chunk_light[:, :-1])),
+		    np.hstack((chunk_light[:, 1:], (World.light_data((chunkpos[0], chunkpos[1] + 1))[:, 0:1]))),
+		    np.vstack((chunk_light[1:, :], (World.light_data((chunkpos[0] + 1, chunkpos[1]))[0:1, :]))),
+		    np.vstack(((World.light_data((chunkpos[0] - 1, chunkpos[1]))[-1:, :]), chunk_light[:-1, :])),
+		    chunk_light - 1, chunk_light + 1
 		]
 		verts = []
 		tex_verts = []
@@ -1218,10 +1180,9 @@ class World:
 				verts.append(cShowR + cube_verts - (128, 128, 128))
 				tex_verts.append(np.vstack(Textures.game_blocks[bShow, 6 * i:6 * i + 6]))
 				normals.append(
-				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i],
-				            (6 * len(cShow), 1)) * np.tile(
-				                np.repeat(((lShow <= cShow[:, 1]) + settings.shadow_brightness) /
-				                          (settings.shadow_brightness + 1), 6), (3, 1)).T)
+				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(cShow), 1)) * np.tile(
+				        np.repeat(((lShow <= cShow[:, 1]) + settings.shadow_brightness) /
+				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
 
 				counter += len(cShow) * 6
 			if len(cShow_transp) > 0:
@@ -1229,25 +1190,19 @@ class World:
 				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(cShow_transp), 1))
 
 				transp_verts.append(cShowR + cube_verts - (128, 128, 128))
-				transp_tex_verts.append(
-				    np.vstack(Textures.game_blocks[bShow_transp, 6 * i:6 * i + 6]))
+				transp_tex_verts.append(np.vstack(Textures.game_blocks[bShow_transp, 6 * i:6 * i + 6]))
 				transp_normals.append(
-				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i],
-				            (6 * len(cShow_transp), 1)) *
-				    np.tile(
-				        np.repeat(
-				            ((lShow_transp <= cShow_transp[:, 1]) + settings.shadow_brightness) /
-				            (settings.shadow_brightness + 1), 6), (3, 1)).T)
+				    np.tile(types[settings.gpu_data_type][4] * Cube.normals[i], (6 * len(cShow_transp), 1)) * np.tile(
+				        np.repeat(((lShow_transp <= cShow_transp[:, 1]) + settings.shadow_brightness) /
+				                  (settings.shadow_brightness + 1), 6), (3, 1)).T)
 
 				counter_transp += len(cShow_transp) * 6
-		vert_tex_list = np.ravel(
-		    np.column_stack((np.vstack(verts), np.vstack(tex_verts),
-		                     np.vstack(normals)))).astype(types[settings.gpu_data_type][0])
+		vert_tex_list = np.ravel(np.column_stack(
+		    (np.vstack(verts), np.vstack(tex_verts), np.vstack(normals)))).astype(types[settings.gpu_data_type][0])
 		if counter_transp != 0:
 			vert_tex_transp = np.ravel(
-			    np.column_stack(
-			        (np.vstack(transp_verts), np.vstack(transp_tex_verts),
-			         np.vstack(transp_normals)))).astype(types[settings.gpu_data_type][0])
+			    np.column_stack((np.vstack(transp_verts), np.vstack(transp_tex_verts),
+			                     np.vstack(transp_normals)))).astype(types[settings.gpu_data_type][0])
 			return ((vert_tex_list, counter), (vert_tex_transp, counter_transp))
 		return ((vert_tex_list, counter), None)
 
@@ -1258,22 +1213,18 @@ class World:
 			return np.zeros((World.chunk_size, World.height, World.chunk_size))
 
 	def chunk_in_view(chunk, y_lims):
-		leftV = Vector(
-		    -settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
-		    player.norm[1],
-		    -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2)))
-		rightV = Vector(
-		    settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
-		    player.norm[1],
-		    settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2)))
-		topV = Vector(
-		    player.norm[0],
-		    settings.movement_speed *
-		    abs(math.tan(math.radians(player.rot[0] + 90 + settings.fovY))), player.norm[2])
-		bottomV = Vector(
-		    player.norm[0],
-		    settings.movement_speed *
-		    abs(math.tan(math.radians(player.rot[0] - 90 - settings.fovY))), player.norm[2])
+		leftV = Vector(-settings.movement_speed * math.cos(math.radians(player.rot[1] - Display.fovX / 2)),
+		               player.norm[1],
+		               -settings.movement_speed * math.sin(math.radians(player.rot[1] - Display.fovX / 2)))
+		rightV = Vector(settings.movement_speed * math.cos(math.radians(player.rot[1] + Display.fovX / 2)),
+		                player.norm[1],
+		                settings.movement_speed * math.sin(math.radians(player.rot[1] + Display.fovX / 2)))
+		topV = Vector(player.norm[0],
+		              settings.movement_speed * abs(math.tan(math.radians(player.rot[0] + 90 + settings.fovY))),
+		              player.norm[2])
+		bottomV = Vector(player.norm[0],
+		                 settings.movement_speed * abs(math.tan(math.radians(player.rot[0] - 90 - settings.fovY))),
+		                 player.norm[2])
 		frustum = (leftV, rightV, topV, bottomV)
 		inFrustum = True
 		for plane in frustum:
@@ -1299,10 +1250,8 @@ class World:
 			return None
 		if not World.height > coords[1] > 0:
 			return 0
-		return World.chunk_data(
-		    (coords[0] // World.chunk_size,
-		     coords[2] // World.chunk_size))[math.floor(coords[0] % World.chunk_size)][math.floor(
-		         coords[1])][math.floor(coords[2] % World.chunk_size)]
+		return World.chunk_data((coords[0] // World.chunk_size, coords[2] // World.chunk_size))[math.floor(
+		    coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(coords[2] % World.chunk_size)]
 
 	def update_chunk(ch):
 		if ch in World.loaded_chunks.keys():
@@ -1340,8 +1289,8 @@ class World:
 	def put_block(coords, block):
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 
-		currentLight = math.floor(World.light[ch][math.floor(
-		    coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)])
+		currentLight = math.floor(World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
+		    coords[2] % World.chunk_size)])
 		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == currentLight:
 			h = math.floor(coords[1]) - 1
 			while World.get_block((coords[0], h, coords[2])) == 0:
@@ -1349,13 +1298,12 @@ class World:
 					break
 				h -= 1
 			else:
-				World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
-				    coords[2] % World.chunk_size)] = h
+				World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)] = h
 		elif block != 0 and coords[1] > currentLight:
-			World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
-			    coords[2] % World.chunk_size)] = coords[1]
-		World.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
-		    coords[1])][math.floor(coords[2] % World.chunk_size)] = block
+			World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
+			                                                                     World.chunk_size)] = coords[1]
+		World.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
+		    coords[2] % World.chunk_size)] = block
 
 		# Update chunk min and max values
 		chmin, chmax = World.chunk_min_max[ch]
@@ -1401,8 +1349,7 @@ make_coord_array()
 constV = ((0, 0), (0, 0), (0, 0))
 
 game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
-seethrough = np.array(json.loads(
-    open(f"textures/{settings.texture_pack}/transparency.json").read()))
+seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
 
 character_coords = np.array(((0, 1), (0, 0), (1, 0), (1, 1)))
 chat_string = ""
@@ -1414,23 +1361,20 @@ class Display:
 		#Initialising screen, 3D rendering and position/rotation vectors
 		if settings.fullscreen:
 			if sys.platform == "win32":
-				Display.size = (ctypes.windll.user32.GetSystemMetrics(0),
-				                ctypes.windll.user32.GetSystemMetrics(1))
+				Display.size = (ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1))
 			else:
 				import subprocess
-				output = subprocess.Popen('xrandr | grep "\*" | cut -d" " -f4',
-				                          shell=True,
+				output = subprocess.Popen('xrandr | grep "\*" | cut -d" " -f4', shell=True,
 				                          stdout=subprocess.PIPE).communicate()[0]
 				output = output.decode()[:-1].split("x")
 				Display.size = (int(output[0]), int(output[1]))
 		else:
 			Display.size = size
-		Display.fovX = math.degrees(2 * math.atan(
-		    math.tan(math.radians(settings.fovY / 2)) * (Display.size[0] / Display.size[1])))
+		Display.fovX = math.degrees(
+		    2 * math.atan(math.tan(math.radians(settings.fovY / 2)) * (Display.size[0] / Display.size[1])))
 		Display.centre = (Display.size[0] // 2, Display.size[1] // 2)
 
-		Display.screen = pg.display.set_mode(Display.size,
-		                                     (FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL
+		Display.screen = pg.display.set_mode(Display.size, (FULLSCREEN * settings.fullscreen) | DOUBLEBUF | OPENGL
 		                                     | (pg.RESIZABLE * settings.resizeable))
 		glMatrixMode(GL_PROJECTION)
 		glLoadIdentity()
@@ -1471,12 +1415,10 @@ class Textures:
 		Textures.text_ratio = Textures.text[1].get_width() * (Textures.texttable_height /
 		                                                      16) / Textures.text[1].get_height()
 		TSR = title_size[1] / title_size[0]
-		Textures.title_coords = character_coords * np.array(
-		    [TSR * (Display.centre[0] / Display.centre[1]), 1])
+		Textures.title_coords = character_coords * np.array([TSR * (Display.centre[0] / Display.centre[1]), 1])
 		logo_size = (Textures.logo[1].get_width(), Textures.logo[1].get_height())
 		Textures.logo_coords = (character_coords * 2 - 1) * np.array(
-		    (TSR, logo_size[1] / logo_size[0])) * settings.logo_scale + np.array(
-		        [0.0625 * settings.logo_scale, 0.65])
+		    (TSR, logo_size[1] / logo_size[0])) * settings.logo_scale + np.array([0.0625 * settings.logo_scale, 0.65])
 
 		Textures.mapsize_big = (Textures.terrain[1].get_width(), Textures.terrain[1].get_height())
 		Textures.mapsize = np.array(Textures.mapsize_big) / 16
@@ -1484,40 +1426,35 @@ class Textures:
 		Textures.game_blocks = Textures.generate(game_blocks)
 
 	def update_pixel_size():
-		Textures.pixel_size = 2 * Textures.text[1].get_height() / (Display.size[1] *
-		                                                           Textures.texttable_height)
+		Textures.pixel_size = 2 * Textures.text[1].get_height() / (Display.size[1] * Textures.texttable_height)
 
 	def generate(blocks):
-		Face = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1], [0, 1, 1, 1, 2, 2],
-		                 [0, 1, 1, 1, 2, 3], [0, 1, 2, 2, 3, 4], [0, 1, 2, 3, 4, 5]])
+		Face = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1], [0, 1, 1, 1, 2, 2], [0, 1, 1, 1, 2, 3],
+		                 [0, 1, 2, 2, 3, 4], [0, 1, 2, 3, 4, 5]])
 		TexArray = []
 		for block in blocks:
 			CS = np.tile(Cube.sides, (6, 1))
 			BR = np.repeat(
-			    np.array(
-			        [np.array(block)[Face[len(block) - 1]],
-			         np.array([Textures.mapsize[1]] * 6)]).T, 6, 0)
+			    np.array([np.array(block)[Face[len(block) - 1]],
+			              np.array([Textures.mapsize[1]] * 6)]).T, 6, 0)
 			TexArray.append(CS + BR)
 		return np.array(TexArray)
 
 
 class Sky:
-	triangles = ((2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5), (6, 8, 4), (9, 6, 4), (8, 7, 4),
-	             (7, 9, 4), (6, 2, 8), (6, 0, 2), (9, 0, 6), (9, 3, 0), (8, 1, 7), (8, 2, 1),
-	             (7, 3, 9), (7, 1, 3))
-	vertices = ((-1, 1, -1), (1, 1, 1), (-1, 1 , 1), (1, 1, -1), (0, -1, 0), (0, 4/3, 0),
-	            (-1, 0, -1), (1, 0, 1), (-1, 0, 1), (1, 0, -1))
+	triangles = ((2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5), (6, 8, 4), (9, 6, 4), (8, 7, 4), (7, 9, 4), (6, 2, 8),
+	             (6, 0, 2), (9, 0, 6), (9, 3, 0), (8, 1, 7), (8, 2, 1), (7, 3, 9), (7, 1, 3))
+	vertices = ((-1, 1, -1), (1, 1, 1), (-1, 1, 1), (1, 1, -1), (0, -1, 0), (0, 4 / 3, 0), (-1, 0, -1), (1, 0, 1),
+	            (-1, 0, 1), (1, 0, -1))
 	vert_list = np.array(vertices)[np.array(triangles).ravel()]
 	normals = np.zeros(len(vert_list))
 
 	def init():
 		t = Textures.sky_v
 		b = 1
-		m = (2*t + b) / 3
-		Sky.tex_list = np.array([(0, m), (0, m),
-		                         (0, t)] * 4 + [(0, b), (0, b), (0, b - 0.01)] * 4 +
-		                        [(0, b), (0, m), (0, b), (0, b), (0, m),
-		                         (0, m)] * 4)
+		m = (2 * t + b) / 3
+		Sky.tex_list = np.array([(0, m), (0, m), (0, t)] * 4 + [(0, b), (0, b), (0, b - 0.01)] * 4 +
+		                        [(0, b), (0, m), (0, b), (0, b), (0, m), (0, m)] * 4)
 
 	def get_tex():
 		tempS = Sky.texture_offset(World.game_time)
@@ -1534,16 +1471,11 @@ class Sky:
 
 
 def load_shaders():
-	vertexShader = compileShader(
-	    open(f"shaders/{settings.shader_pack}/shader.vert", 'r').read(), GL_VERTEX_SHADER)
-	fragmentShader = compileShader(
-	    open(f"shaders/{settings.shader_pack}/shader.frag", 'r').read(), GL_FRAGMENT_SHADER)
-	skyVertSh = compileShader(
-	    open(f"shaders/{settings.shader_pack}/skysh.vert", 'r').read(), GL_VERTEX_SHADER)
-	skyFragSh = compileShader(
-	    open(f"shaders/{settings.shader_pack}/skysh.frag", 'r').read(), GL_FRAGMENT_SHADER)
-	waterVertSh = compileShader(
-	    open(f"shaders/{settings.shader_pack}/watersh.vert", 'r').read(), GL_VERTEX_SHADER)
+	vertexShader = compileShader(open(f"shaders/{settings.shader_pack}/shader.vert", 'r').read(), GL_VERTEX_SHADER)
+	fragmentShader = compileShader(open(f"shaders/{settings.shader_pack}/shader.frag", 'r').read(), GL_FRAGMENT_SHADER)
+	skyVertSh = compileShader(open(f"shaders/{settings.shader_pack}/skysh.vert", 'r').read(), GL_VERTEX_SHADER)
+	skyFragSh = compileShader(open(f"shaders/{settings.shader_pack}/skysh.frag", 'r').read(), GL_FRAGMENT_SHADER)
+	waterVertSh = compileShader(open(f"shaders/{settings.shader_pack}/watersh.vert", 'r').read(), GL_VERTEX_SHADER)
 	#waterFragSh= compileShader(open(f"shaders/{settings.shader_pack}/watersh.frag", 'r').read(), GL_FRAGMENT_SHADER)
 	global DayNightShader, skyShader, waterShader
 	DayNightShader = glCreateProgram()
@@ -1623,8 +1555,8 @@ def load_textures(file):
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY)
 	texid = glGenTextures(1)
 	glBindTexture(GL_TEXTURE_2D, texid)
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSurface.get_width(), textureSurface.get_height(),
-	             0, GL_RGBA, GL_UNSIGNED_BYTE, textureData)
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textureSurface.get_width(), textureSurface.get_height(), 0, GL_RGBA,
+	             GL_UNSIGNED_BYTE, textureData)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
