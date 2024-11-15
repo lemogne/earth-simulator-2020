@@ -51,7 +51,6 @@ shown = True
 day_length = 1200  				# Length of a day in seconds
 starting_time = -150  			# Time at which the game starts (midday=0; 1 day=1024)
 unicode = True
-letter_offset = 0.65
 hitbox_epsilon = 0.00001
 text_align = True
 chunk_distance = lambda x, y: x + y	# Chunk distance norm

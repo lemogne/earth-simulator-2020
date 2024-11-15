@@ -145,7 +145,7 @@ class UI:
 			raw_json = open(f"textures/{settings.texture_pack}/font.json").read()
 			char_size_dict = json.loads(raw_json)
 		else:
-			char_size_dict = {}
+			char_size_dict = {"\n" : [0, -1]}
 		default_size = char_size_dict["default"] if "default" in char_size_dict else [1, 4]
 		UI.char_sizes[0] = np.full(Textures.texttable_height * 16, default_size[0] / 8, dtype=np.float64)
 		UI.char_sizes[1] = np.full(Textures.texttable_height * 16, (default_size[1] + 2) / 8, dtype=np.float64)
