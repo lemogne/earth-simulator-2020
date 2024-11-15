@@ -38,7 +38,7 @@ except Exception:
 		except Exception:
 			message += "\nWarning: The game icon seems to be missing!\nCheck if there's a file named 'icon.ico' in the game directory and try to replace it with a placeholder if missing!\n"
 		try:
-			from init import UI, load_textures
+			from init import UI, Textures
 		except Exception:
 			message += "\nError: Your game files seem to be corrupted!"
 			if sys.platform == "win32":
@@ -75,23 +75,23 @@ except Exception:
 		glEnd()
 
 		try:
-			ASCIILoc = load_textures("unicodeL.png")
+			ASCIILoc = Textures.load("unicodeL.png")
 			TableHeight = 24
 		except (pg.error, FileNotFoundError):
 			try:
-				ASCIILoc = load_textures("ascii.png")
+				ASCIILoc = Textures.load("ascii.png")
 				TableHeight = 16
 			except (pg.error, FileNotFoundError):
 				try:
-					ASCIILoc = load_textures("../default/unicodeL.png")
+					ASCIILoc = Textures.load("../default/unicodeL.png")
 					TableHeight = 24
 				except (pg.error, FileNotFoundError):
-					ASCIILoc = load_textures("../default/ascii.png")
+					ASCIILoc = Textures.load("../default/ascii.png")
 					TableHeight = 16
 
 		glEnable(GL_TEXTURE_2D)
 		glBindTexture(GL_TEXTURE_2D, ASCIILoc[0])
-		UI.write(message, (-0.6, 0.6), 0.05, chardim=(0.65, 1.0), color=(0, 0, 0))
+		UI.write(message, (-0.6, 0.6), 0.05, color=(0, 0, 0))
 		pg.display.flip()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 		print_error(message)
@@ -101,7 +101,7 @@ except Exception:
 					pg.quit()
 					quit()
 	except Exception as e:
-		message += "\nUnexpected error during crash handling! \n" + "".join(e)
+		message += "\nUnexpected error during crash handling! \n" + "".join(traceback.format_exc())
 		if platform == "win32":
 			os.system("start criticalcrash.bat 1 \"" +
 					message.replace('"', "'").replace("\n", '" "') + '"')
