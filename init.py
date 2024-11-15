@@ -274,27 +274,9 @@ class UI:
 				         ((box[0] * settings.button_scale + 0.1)[0] * (Display.centre[1] / Display.centre[0]),
 				          (box[0] * settings.button_scale - 0.1)[1]), 0.05)
 
-	def type_button(name, var, type_):
-		# TODO: decouple from Settings
+	def type_button(name):
 		UI.buttons.set_input_button(name)
 		UI.buttons[name].set_text(UI.input_text(UI.buttons[name].get_text()))
-		if not UI.buttons.is_typing():
-			if type_ == str:
-				Settings.variables[var] = '"' + UI.buttons[name].get_text() + '"'
-			elif type_ == tuple:
-				if var not in Settings.variables:
-					value = getattr(settings, var)
-				else:
-					value = eval(Settings.variables[var])
-				Settings.variables[var] = "("
-				for i in range(len(value)):
-					if i != int(name[-1]):
-						Settings.variables[var] += str(value[i]) + ", "
-					else: 
-						Settings.variables[var] += UI.buttons[name].get_text() + ", "
-				Settings.variables[var] = Settings.variables[var][:-2] + ")"
-			else:
-				Settings.variables[var] = UI.buttons[name].get_text()
 
 
 class Button:
@@ -886,6 +868,25 @@ class Settings:
 		setfile.close()
 		Settings.cancel()
 
+	def update_variable(name, var, type_):
+		if not UI.buttons.is_typing():
+			if type_ == str:
+				Settings.variables[var] = '"' + UI.buttons[name].get_text() + '"'
+			elif type_ == tuple:
+				if var not in Settings.variables:
+					value = getattr(settings, var)
+				else:
+					value = eval(Settings.variables[var])
+				Settings.variables[var] = "("
+				for i in range(len(value)):
+					if i != int(name[-1]):
+						Settings.variables[var] += str(value[i]) + ", "
+					else: 
+						Settings.variables[var] += UI.buttons[name].get_text() + ", "
+				Settings.variables[var] = Settings.variables[var][:-2] + ")"
+			else:
+				Settings.variables[var] = UI.buttons[name].get_text()
+
 	def generate_ui():
 		def datatype(data):
 			"""Heuristic function to determine datatype from string"""
@@ -921,21 +922,24 @@ class Settings:
 
 		def gen_right_tuple_func(button_name, var_name, var_type, is_graphics):
 			def button_func():
-				UI.type_button(button_name + "1", var_name, var_type)
+				UI.type_button(button_name + "1")
+				Settings.update_variable(button_name + "1", var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func
 		
 		def gen_left_tuple_func(button_name, var_name, var_type, is_graphics):
 			def button_func():
-				UI.type_button(button_name + "0", var_name, var_type)
+				UI.type_button(button_name + "0")
+				Settings.update_variable(button_name + "0", var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func
 
 		def get_button_func(button_name, var_name, var_type, is_graphics):
 			def button_func():
-				UI.type_button(button_name, var_name, var_type)
+				UI.type_button(button_name)
+				Settings.update_variable(button_name, var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func 
