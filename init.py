@@ -723,8 +723,6 @@ class Settings:
 		imm = UI.in_menu
 		if len(Settings.variables) > 0:
 			global unicode, game_blocks, seethrough
-			#game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
-			#seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
 			glDeleteTextures(
 			    5,
 			    np.array([Textures.ui, Textures.logo, Textures.text, Textures.terrain, Textures.title])[:, 0])
@@ -850,16 +848,16 @@ class Settings:
 					# This is complicated to handle and will be left out for now
 					continue
 
-				# Special case: left value of 2-tuple
-				left_val = tuple_values.group(1)
-				left_button_func = gen_left_tuple_func(button_name, var_name, var_type)
-				Settings.categories[current_category].buttons[button_name + "0"] = Button((x, y), left_val, True, True, left_button_func)
+				# Special case: right value of 2-tuple
+				right_val = tuple_values.group(2)
+				right_button_func = gen_right_tuple_func(button_name, var_name, var_type)
+				Settings.categories[current_category].buttons[button_name + "1"] = Button((x, y), right_val, True, True, right_button_func)
 
-				# right value adjusted so that rest of function can carry on as normal
-				button_func = gen_right_tuple_func(button_name, var_name, var_type)
-				button_name += "1"
+				# left value adjusted so that rest of function can carry on as normal
+				button_func = gen_left_tuple_func(button_name, var_name, var_type)
+				button_name += "0"
 				y += 0.25
-				value = tuple_values.group(2)
+				value = tuple_values.group(1)
 			else:
 				button_func = get_button_func(button_name, var_name, var_type)
 
