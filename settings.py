@@ -20,7 +20,7 @@ tree_res = (16, 16)
 water_level = 33
 
 #GRAPHICS
-render_distance = 30
+render_distance = 20
 ticks_per_second = 15
 max_FPS = 60
 min_FPS = 30

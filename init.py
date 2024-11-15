@@ -403,7 +403,14 @@ bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
 def save_world():
 	global game_blocks
 	try:
+		raw_region_data = {}
+		for reg in World.region_table:
+			if reg not in World.regions:
+				raw_region_data[reg] = Load_World.load_region_raw(reg)
+
 		savefile = World.file
+		savefile.seek(0, 0)
+		savefile.truncate(0)
 		savefile.write(b"ES20\x00v0.4")  # Write file header containing game version
 
 		write_bytes = lambda data, bytes: savefile.write(np.array(data).astype(f'V{bytes}').tobytes())
@@ -426,12 +433,22 @@ def save_world():
 
 		savefile.write(np.array(World.tree_res, dtype=np.float32).tobytes())
 		savefile.write(np.array([World.tree_density_mean, World.tree_density_var, 0, 0, 0], dtype=np.float32).tobytes())
-		savefile.write(np.array(len(World.regions), dtype=np.int32).tobytes())
+		savefile.write(np.array(len(World.regions) + len(raw_region_data), dtype=np.int32).tobytes())
 
 		table_pos = savefile.tell()
 
-		savefile.seek(16 * len(World.regions), 1)
+		savefile.seek(16 * (len(World.regions) + len(raw_region_data)), 1)
 		i = savefile.tell()
+
+		# Save unloaded chunks first
+		for region in raw_region_data:
+			savefile.seek(table_pos)
+			savefile.write(np.array(region, dtype=np.int32).tobytes())
+			savefile.write(np.array([i, raw_region_data[region][0]], dtype=np.int32).tobytes())
+			table_pos = savefile.tell()
+			savefile.seek(i)
+			savefile.write(raw_region_data[region][1])
+			i = savefile.tell()
 
 		# Save each chunk separately, in sequence
 		for region in World.regions:
@@ -722,12 +739,12 @@ class Load_World:
 		readfile = World.file
 		readfile.seek(World.region_table[reg][0])
 		BLblocks = World.bytes_for_block_ID
+		chunk_length = World.chunk_size**2 * World.height
 
 		# Chunk reading loop (reads until end of block data flag is read)
 		for _ in range(World.region_table[reg][1]):
 			pg.event.get()  # prevents window from freezing
 
-			chunk_length = World.chunk_size**2 * World.height
 			chunk_buffer = np.zeros(chunk_length)
 
 			ch = (int.from_bytes(readfile.read(1), "little", signed=True), 
@@ -775,6 +792,37 @@ class Load_World:
 
 			# Set chunk as generated
 			region.gen_chunks[ch] = True
+
+
+	def load_region_raw(reg):
+		readfile = World.file
+		readfile.seek(World.region_table[reg][0])
+		BLblocks = World.bytes_for_block_ID
+		
+		region_buffer = b""
+		chunk_length = World.chunk_size**2 * World.height
+
+		# Chunk reading loop (reads until end of block data flag is read)
+		for _ in range(World.region_table[reg][1]):
+			#pg.event.get()  # prevents window from freezing
+
+			region_buffer += readfile.read(2)
+			# reads blocks until chunk is filled
+			i = 0
+			while i < chunk_length:
+				kr = readfile.read(1)
+				region_buffer += kr
+				k = int.from_bytes(kr, "little")
+				if k > 127:
+					nr = readfile.read(k - 127)
+					region_buffer += nr
+					n = int.from_bytes(nr, "little")
+				else:
+					n = k
+				blockr = readfile.read(BLblocks)
+				region_buffer += blockr
+				i += n
+		return (World.region_table[reg][1], region_buffer)
 
 
 	def screen(event):
