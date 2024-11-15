@@ -1,13 +1,14 @@
 # Earth Simulator 2020
-A Minecraft clone written in Python; very creatively named because I couldn't think of anything better. Highly customisable (I think). Should run on Python 3.8+ and probably runs on 3.6+ (if not, I can try and patch the code that's causing the issue). Does *not* run on Python 3.5 or less because those versions lack format strings. To run, just run `run.pyw`.
+A Minecraft clone written in Python; very creatively named because I couldn't think of anything better. Highly customisable (I think). Should run on Python 3.8+ and probably runs on 3.6+ (if not, I can try and patch the code that's causing the issue). Does *not* run on Python 3.5 or less because those versions lack format strings. To run, just run the file `run.pyw`.
 ### Required libraries to run:
 - `pygame`
 - `pyopengl`
 - `numpy`
+
 The newest versions are recommended, but older versions should still work. 
 
 ## Gameplay
-The world has a fixed (but configuarble) size and is made of 15 types of blocks. Terrain is procedurally generated.
+The world has a fixed (but configurable) size and is made of 15 types of blocks. Terrain is procedurally generated.
 - `WSAD` movement
 - `Mouse` camera control
 - `Left Click` destroy block
@@ -32,7 +33,3 @@ The game culls chunks it does not need to render. However, this only gets update
 - `terragen.py` contains most of the terrain generation code.
 - `menu.py` contains the code that runs the main menu.
 - `settings.py` contains all the game's settings and is meant to be edited.
-
-## Security
-The game allows arbitrary code execution in certain places (for example, you can edit `settings.py` to run any code you wish, but the same can be said for any other file; you can also press `R` in-game to input arbitrary code to run. The way I implemented applying changes in the settings means there could be potential for that there aswell, though I haven't tested that.)
-Either way, resources like texture packs and shader packs use `.json` files to manage their contents and so are not prone to this sort of attack. The game does not connect to the internet in any way, shape or form, so any sorts of attacks on that front are also not possible.
