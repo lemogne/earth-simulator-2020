@@ -4,12 +4,13 @@ import numpy as np
 chunk_size = 16
 world_height = 256
 world_size_F = 5
+region_size = 16
 
-heightlim = (10, 100)
-T_res = (32, 32)
-HL_res = (8, 8)
-V_res = (8, 8)
-G_res = (2, 2)		
+heightlim = (2, 150)
+T_res = (16, 16)
+HL_res = (4, 4)
+V_res = (4, 4)
+G_res = (1, 1)		
 
 tree_density = 1 / 128
 

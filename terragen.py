@@ -1,17 +1,23 @@
 from init import *
 
-def generate_perlin_noise_2d(shape, res, seed=None):
+def generate_perlin_noise_2d(coords, shape, res, seed=None):
 	if seed == None:
 		seed = World.seed
+
+	seed += coords[0] * 58274
+	seed += coords[1] * (-437)
 
 	def f(t):
 		return 6 * t**5 - 15 * t**4 + 10 * t**3
 
 	delta = (res[0] / shape[0], res[1] / shape[1])
 	d = (shape[0] // res[0], shape[1] // res[1])
+	#print(d)
+	#print(shape)
+	#print(res)
 	grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]].transpose(1, 2, 0) % 1
 	# Gradients
-	angles = 2 * np.pi * rand(seed, (res[0] + 1, res[1] + 1))
+	angles = 2 * np.pi * rand(seed, (res[0] + 1, res[1] + 1), coords)
 	gradients = np.dstack((np.cos(angles), np.sin(angles)))
 	g00 = gradients[0:-1, 0:-1].repeat(d[0], 0).repeat(d[1], 1)
 	g10 = gradients[1:, 0:-1].repeat(d[0], 0).repeat(d[1], 1)
@@ -28,37 +34,53 @@ def generate_perlin_noise_2d(shape, res, seed=None):
 	n1 = n01 * (1 - t[:, :, 0]) + t[:, :, 0] * n11
 	return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
 
-# Generate random array of chunks
-def gen_terrain():
-	WorldSize = np.array((2**settings.world_size_F, 2**settings.world_size_F))
-	World.height = settings.world_height
-	World.chunk_size = settings.chunk_size
-	World.chunk_min_max = dict()
+def gen_heightmaps(coord_list):
+	for coords in coord_list:
+		t_coords = tuple(coords * settings.region_size)
+		#print(coord_list)
+		if t_coords in World.heightmap:
+			continue
+		
+		chunk_shape = np.array((settings.chunk_size, settings.chunk_size)) * settings.region_size
 
-	heightmap = ((generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.T_res) + 1) / 2)
-	levelmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.HL_res) + 1) / 2
-	variancemap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.V_res, World.seed + 89128) + 1) / 2
-	generalmap = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, settings.G_res, World.seed) + 1) / 2
-	m1map = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, (128, 128), World.seed) + 1) * 0.003
-	m2map = (generate_perlin_noise_2d(WorldSize * settings.chunk_size, (512, 512), World.seed + 89128) + 1) * 0.001
+		heightmap = ((generate_perlin_noise_2d(t_coords, chunk_shape, settings.T_res) + 1) / 2)
+		levelmap = (generate_perlin_noise_2d(t_coords, chunk_shape, settings.HL_res) + 1) / 2
+		variancemap = (generate_perlin_noise_2d(t_coords, chunk_shape, settings.V_res, World.seed + 89128) + 1) / 2
+		generalmap = (generate_perlin_noise_2d(t_coords, chunk_shape, settings.G_res, World.seed) + 1) / 2
+		m1map = (generate_perlin_noise_2d(t_coords, chunk_shape, (64, 64), World.seed) + 1) * 0.003
+		m2map = (generate_perlin_noise_2d(t_coords, chunk_shape, (256, 256), World.seed + 89128) + 1) * 0.001
 
-	heightmap *= variancemap**2
-	heightmap **= 0.5
-	heightmap += levelmap
-	heightmap /= 2
-	heightmap += 2 * generalmap
-	heightmap /= 3
-	heightmap += m1map + m2map
-	heightmap -= min(heightmap.ravel())
-	heightmap /= max(heightmap.ravel())
-	heightmap = (heightmap * (settings.heightlim[1] - settings.heightlim[0]) + settings.heightlim[0])
+		heightmap *= variancemap**2
+		heightmap **= 0.5
+		heightmap += levelmap
+		heightmap /= 2
+		heightmap += 2 * generalmap
+		heightmap /= 3
+		heightmap += m1map + m2map
+		heightmap /= 1.004
+		heightmap = (heightmap * (settings.heightlim[1] - settings.heightlim[0]) + settings.heightlim[0])
+		for i in range(settings.region_size):
+			for j in range(settings.region_size):
+				ch = tuple(t_coords + np.array((i, j)))
+				World.heightmap[ch] = heightmap[i * settings.chunk_size : (i + 1) * settings.chunk_size,
+				                                                         j * settings.chunk_size : (j + 1) * settings.chunk_size]
+
+def gen_chunk(coords):
+	gen_heightmaps((np.array([[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0]]) + coords) // settings.region_size)
+	heightmap = World.heightmap[coords]
+
+	# Neighbouring chunks
+	left  = World.heightmap[(coords[0]-1, coords[1])]
+	right = World.heightmap[(coords[0]+1, coords[1])]
+	up    = World.heightmap[(coords[0], coords[1]+1)]
+	down  = World.heightmap[(coords[0], coords[1]-1)]
 
 	# List of neighbour blocks in each direction (except up/down); is used to determine slope at each location
 	slope = np.array([
-	    np.hstack((heightmap[:, -1:], heightmap[:, :-1])),
-	    np.hstack((heightmap[:, 1:], heightmap[:, :1])),
-	    np.vstack((heightmap[1:, :], heightmap[:1, :])),
-	    np.vstack((heightmap[-1:, :], heightmap[:-1, :]))
+	    np.hstack((down[:, -1:], heightmap[:, :-1])),
+	    np.hstack((heightmap[:, 1:], up[:, :1])),
+	    np.vstack((heightmap[1:, :], right[:1, :])),
+	    np.vstack((left[-1:, :], heightmap[:-1, :]))
 	])
 
 	slope -= heightmap
@@ -66,9 +88,42 @@ def gen_terrain():
 	# Rock constant for each block; determines, based on elevation, from which slope onwards stone is generated instead of grass
 	rockC = ((60 / heightmap)**2) - 0.1
 
-	heightmap = heightmap.astype(np.uint8)  # Compression
 	# Map of where grass should be (x and z coordinates)
 	terrainmap = (slope[0] <= rockC) & (slope[1] <= rockC) & (slope[2] <= rockC) & (slope[3] <= rockC)
+
+	heights = coordArray3[:, :, :, 1]  # Array of y-values for each block in the chunk
+
+	# Cut-down heightmap copied for each y value
+	current_height = np.transpose(np.tile(heightmap, (settings.world_height, 1, 1)), (1, 0, 2)).astype(np.uint16)
+
+	# Terrain map (of where grass should be) cut down to current chunk and copied for each y value
+	tm = np.transpose(
+		np.tile(
+			terrainmap, (settings.world_height, 1, 1)), (1, 0, 2))
+
+	# Create masks for each generated block type
+	block_map = heights <= current_height
+	water_map = (heights > current_height) & (heights < 34)
+	surface_map = heights == current_height
+	grass_map = surface_map & (heights > 34) & tm
+	sand_map = surface_map & (heights < 35)
+	dirt_map = block_map & (heights > (current_height - 3)) & ~surface_map & tm
+	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
+
+	# Actually generate chunks and calculate lighting
+	chmin = np.min(heightmap) / settings.chunk_size
+	World.chunk_min_max[coords] = (chmin, (np.max(heightmap) / settings.chunk_size) - chmin)
+	World.chunks[coords] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
+												stone_map).astype(np.uint8)
+	World.light[coords] = ((heightmap > 33) * heightmap + (heightmap < 34) * 33)
+	pg.event.get()	# To prevent operating system from marking process as frozen
+
+# Generate random array of chunks
+def gen_terrain():
+	WorldSize = np.array((2**settings.world_size_F, 2**settings.world_size_F))
+	World.height = settings.world_height
+	World.chunk_size = settings.chunk_size
+	World.chunk_min_max = dict()
 
 	World.chunks = {}
 	World.light = {}
@@ -76,41 +131,19 @@ def gen_terrain():
 	# Generate Chunk block arrays based on height map
 	for _i in range(WorldSize[0]):
 		for _k in range(WorldSize[1]):
-			heights = coordArray3[:, :, :, 1]  # Array of y-values for each block in the chunk
-
-			# Translate generated data into usable form
-
-			# heightmap cut down to current chunk
-			hm = heightmap[_i * settings.chunk_size:(_i + 1) * settings.chunk_size,
-			               _k * settings.chunk_size:(_k + 1) * settings.chunk_size]
-
-			# Cut-down heightmap copied for each y value
-			current_height = np.transpose(np.tile(hm, (settings.world_height, 1, 1)), (1, 0, 2))
-
-			# Terrain map (of where grass should be) cut down to current chunk and copied for each y value
-			tm = np.transpose(
-			    np.tile(
-			        terrainmap[_i * settings.chunk_size:(_i + 1) * settings.chunk_size,
-			                   _k * settings.chunk_size:(_k + 1) * settings.chunk_size], (settings.world_height, 1, 1)), (1, 0, 2))
-
-			# Create masks for each generated block type
-			block_map = heights <= current_height
-			water_map = (heights > current_height) & (heights < 34)
-			surface_map = heights == current_height
-			grass_map = surface_map & (heights > 34) & tm
-			sand_map = surface_map & (heights < 35)
-			dirt_map = block_map & (heights > (current_height - 3)) & ~surface_map & tm
-			stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
-
 			# Actually generate chunks and calculate lighting
 			ch = (_i - WorldSize[0] // 2, _k - WorldSize[1] // 2)
-			chmin = np.min(hm) / settings.chunk_size
-			World.chunk_min_max[ch] = (chmin, (np.max(hm) / settings.chunk_size) - chmin)
-			World.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
-			                                          stone_map).astype(np.uint8)
-			World.light[ch] = ((hm > 33) * hm + (hm < 34) * 33)
+			gen_chunk(ch)
 			pg.event.get()	# To prevent operating system from marking process as frozen
 
+
+	# Setup
+	player.pos = np.array((
+	    -0.5,
+	    100.0,
+		-0.5)
+	)
+	return
 	# Generate tree map
 
 	# -Coordinates and types for trees
@@ -143,9 +176,3 @@ def gen_terrain():
 						    (tree[0] + x - (WorldSize[0] / 2) * settings.chunk_size, tree[1] + y, tree[2] + z -
 						     (WorldSize[1] / 2) * settings.chunk_size), schematic["tree"][tree[3]][x, y, z])
 
-	# Setup
-	player.pos = np.array((
-	    -0.5,
-	    float(max(heightmap[int(WorldSize[0] * settings.chunk_size / 2)][int(WorldSize[1] * settings.chunk_size /2)], 33) + 2),
-		-0.5)
-	)
