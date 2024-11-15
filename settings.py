@@ -11,8 +11,8 @@ HL_res = (64, 64)
 V_res = (64, 64)
 G_res = (256, 256)		
 
-tree_density_mean = 1 / 32
-tree_density_var = 1
+tree_density_mean = 1 / 64
+tree_density_var = 1.1
 tree_res = (4, 4)
 water_level = 33
 
@@ -21,7 +21,7 @@ render_distance = 15
 ticks_per_second = 15
 max_FPS = 60
 nominal_res = (1205, 720)
-fullscreen = False		
+fullscreen = True		
 fov_Y = 60
 frame_cap = False
 texture_pack = "default"		
