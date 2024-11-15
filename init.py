@@ -1317,16 +1317,20 @@ class World:
 			player.old_chunkpos = None
 		World.chunk_min_max[ch] = (chmin_new, chmax_new)
 
+	# TODO: possible error: sudden jump in y level between neighbouring chunks
+	# can lead to rendering errors -> fix! (idea: involve surrounding blocks)
 	def thorough_chmin(ch):
 		for y in range(World.height):
 			if seethrough[World.chunks[ch][:, y, :]].any():
 				return y / World.chunk_size
+		return World.height
 
 	def thorough_chmax(ch):
 		for y in range(World.height - 1, -1, -1):
 			if (World.chunks[ch][:, y, :] != 0).any():
 				chmin = World.chunk_min_max[ch][0]
 				return (y / World.chunk_size) - chmin
+		return 0
 
 
 coordArray = []
