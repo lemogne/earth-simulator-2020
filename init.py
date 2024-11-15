@@ -828,11 +828,13 @@ class Settings:
 		setfile.close()
 		setfile = open("settings.py", "w")
 		for line in setlines:
-			var = line.split(" = ")[0]
-			if var in Settings.variables:
-				comm = line.split("#", 1) + [""]
-				setfile.write(f"{var} = {Settings.variables[var]}\t\t#{comm[1]}\n")
-				exec(f"settings.{var} = {Settings.variables[var]}")
+			line_parse = re.fullmatch(r"(?:([a-zA-Z_0-9]+) *= *(.+?))?([ \t]*#.*)?\n?", line)
+			
+			if line_parse and (var := line_parse.group(1)) in Settings.variables:
+				comment = line_parse.group(3)
+				comment = comment if comment else ''
+				setfile.write(f"{var} = {Settings.variables[var]}{comment}\n")
+				setattr(settings, var, eval(Settings.variables[var]))
 			else:
 				setfile.write(line)
 		imm = UI.in_menu
