@@ -149,7 +149,7 @@ while 1:
 				elif event.key == pg.K_r:
 					UI.buttons.set_typing(True)
 					UI.show_game_info = False
-					chat_string = "> _"
+					chat_string = "> "
 				elif event.key == pg.K_c:
 					chat_string = ""
 				elif event.key == pg.K_UP:
