@@ -386,7 +386,7 @@ class Save_World:
 			BLch = bytesneeded(2**settings.world_size_F)
 			BLheight = bytesneeded(World.height)
 			savefile.write(np.array([BLblocks, BLpos, BLch, BLheight, 0], dtype=np.int8).tobytes())
-			savefile.write(np.array([World.chunk_size, World.height, 0]).tobytes())
+			savefile.write(np.array([World.chunk_size, World.height, 0], dtype=np.int32).tobytes())
 			savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
 			savefile.write(np.array(player.rot, dtype=np.float32).tobytes())
 
