@@ -13,8 +13,9 @@ while 1:
 	chunk_loop = Thread(target = chunk_thread, daemon = True)
 	chunk_loop.start()
 
-	gen_chunk_loop = Thread(target = terragen.gen_chunk_thread, daemon = True)
-	gen_chunk_loop.start()
+	if World.infinite:
+		gen_chunk_loop = Thread(target = terragen.gen_chunk_thread, daemon = True)
+		gen_chunk_loop.start()
 
 	Time.start = time.time()
 	Time.last_tick = Time.start
@@ -150,4 +151,5 @@ Game Time:\t{round(World.game_time)}"""
 						settings.current_block %= len(game_blocks)
 	UI.in_menu = True
 	chunk_loop.join()
-	gen_chunk_loop.join()
+	if World.infinite:
+		gen_chunk_loop.join()
