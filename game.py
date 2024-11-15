@@ -65,12 +65,12 @@ while 1:
 					lookedAt_str = str(looked_at_coords // 1)[1:-1]
 				else:
 					lookedAt_str = "None"
-				chat_string = f"""Position:\t{str(np.round(player.pos, 4))[1:-1]}
-Rotation:\t{str(np.round(player.rot, 4))[1:-1]}
-FPS:\t\t{Time.prev_frames}
-Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})
-World Seed:\t{World.seed}
-Game Time:\t{round(World.game_time)}"""
+				chat_string = f"Position:\t{str(np.round(player.pos, 4))[1:-1]}\n"\
+					f"Rotation:\t{str(np.round(player.rot, 4))[1:-1]}\n"\
+					f"FPS:\t\t{Time.prev_frames}\n"\
+					f"Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})\n"\
+					f"World Seed:\t{World.seed}\n"\
+					f"Game Time:\t{round(World.game_time)}"
 
 		# Resets frame count
 		if int(now) != Time.last_second:

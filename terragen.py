@@ -89,6 +89,7 @@ def gen_chunk(coords):
 	# Map of where grass should be (x and z coordinates)
 	terrainmap = (slope[0] <= rockC) & (slope[1] <= rockC) & (slope[2] <= rockC) & (slope[3] <= rockC)
 	heights = World.y_array  # Array of y-values for each block in the chunk
+	heightmap_int = heightmap.astype(np.uint16)
 
 	# Create masks for each generated block type
 	if coords in World.blockmap:
@@ -96,18 +97,18 @@ def gen_chunk(coords):
 	else:
 		block_map = heights <= heightmap
 	water_map = (heights > heightmap) & (heights <= World.water_level)
-	surface_map = heights == heightmap.astype(np.uint16)
+	surface_map = heights == heightmap_int
 	grass_map = surface_map & (heights > 34) & terrainmap
 	sand_map = surface_map & (heights < 35)
 	dirt_map = block_map & (heights > (heightmap - 3)) & ~surface_map & terrainmap
 	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
 
 	# Actually generate chunks and calculate lighting
-	chmin = np.min(heightmap) / World.chunk_size
-	region.chunk_min_max[ch] = (chmin, (np.max(heightmap) / World.chunk_size) - chmin)
+	chmin = np.min(heightmap_int) / World.chunk_size
+	region.chunk_min_max[ch] = (chmin, (np.max(heightmap_int) / World.chunk_size) - chmin)
 	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
 												stone_map).astype(np.uint8).transpose(1, 0, 2)
-	region.light[ch] = ((heightmap > World.water_level) * heightmap + (heightmap < World.water_level) * World.water_level)
+	region.light[ch] = ((heightmap_int > World.water_level) * heightmap_int + (heightmap_int < World.water_level) * World.water_level)
 
 	trees = gen_trees(coords)
 
