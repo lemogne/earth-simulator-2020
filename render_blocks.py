@@ -11,10 +11,11 @@ def highlight_block(position):
 	glColor3f(1, 1, 1)
 
 def render_chunk(chunkData):
+	s = types[settings.gpu_data_type][3]
 	glBindBuffer(GL_ARRAY_BUFFER, chunkData[0])
-	glTexCoordPointer(2, GL_BYTE, 8, (c_void_p)(3))
-	glVertexPointer(3, GL_BYTE, 8, None)
-	glNormalPointer(GL_BYTE, 8, (c_void_p)(5))
+	glTexCoordPointer(2, types[settings.gpu_data_type][1], 8 * s, (c_void_p)(3 * s))
+	glVertexPointer(3, types[settings.gpu_data_type][1], 8 * s, None)
+	glNormalPointer(types[settings.gpu_data_type][1], 8 * s, (c_void_p)(5 * s))
 	glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
 
 def render_sky(time_start):
@@ -70,8 +71,8 @@ def render(chat_string):
 		glBegin(GL_TRIANGLES)
 		for i in range(6):
 			glTexCoord2fv(Textures.game_blocks[World.get_block(player.pos + Vector(0, player.height, 0))][i])
-			glVertex2f(Cube.vertices[Cube.triangles[0][i]][0] * 2 - 1,
-			           (Cube.vertices[Cube.triangles[0][i]][1] - 0.5) * (Display.centre[0] / Display.centre[1]) * 2)
+			glVertex3f(Cube.vertices[Cube.triangles[0][i]][0] * 2 - 1 -128,
+			           (Cube.vertices[Cube.triangles[0][i]][1] - 0.5) * (Display.centre[0] / Display.centre[1]) * 2 - 128, -127)
 		glEnd()
 
 	#Draw currently selected block texture
@@ -80,7 +81,7 @@ def render(chat_string):
 		if settings.current_block:
 			glBegin(GL_TRIANGLES)
 			for i in range(6):
-				glTexCoord2fv(Textures.game_blocks[settings.current_block][i])
+				glTexCoord2fv(Textures.game_blocks[settings.current_block][i] / Textures.mapsize)
 				glVertex2f(
 					Cube.vertices[Cube.triangles[0][i]][0] * (Display.centre[1] / Display.centre[0]) * settings.icon_size + settings.icon_offset[0],
 					Cube.vertices[Cube.triangles[0][i]][1] * settings.icon_size + settings.icon_offset[1])
