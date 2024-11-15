@@ -20,6 +20,7 @@ water_level = 33
 render_distance = 15		
 ticks_per_second = 15
 max_FPS = 60
+min_FPS = 60
 nominal_res = (1205, 720)
 fullscreen = False		
 fov_Y = 60

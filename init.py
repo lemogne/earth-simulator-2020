@@ -1601,6 +1601,16 @@ class Sky:
 		return (clamp(-math.cos((time / settings.day_length) * 2 * math.pi) * hardness, -0.9, 0.9) + 1) / 2
 
 
+class Time:
+	time_start = time.time()
+	last_tick = time_start
+	last_frame = time_start
+
+	# FPS counting
+	last_second = int(time_start)
+	frames = 0
+	prev_frames = 0
+
 
 def load_shaders():
 	vertex_shader = compileShader(open(f"shaders/{settings.shader_pack}/shader.vert", 'r').read(), GL_VERTEX_SHADER)
@@ -1626,11 +1636,15 @@ def load_shaders():
 	glLinkProgram(water_shader)
 
 
-def process_chunks():
+def process_chunks(skip_smoothing = False):
 	for reg in World.active_regions:
 		if reg.lock:
 			continue
 		while (ch := reg.to_be_loaded.pop(0) if len(reg.to_be_loaded) > 0 else None):
+			while not skip_smoothing and time.time() - Time.last_frame >= 1 / settings.min_FPS:
+				if UI.in_menu:
+					return
+				time.sleep(0.1)
 			reg.preloaded_data[ch] = World.process_chunk(ch + reg.pos)
 
 def chunk_thread():
