@@ -1946,7 +1946,7 @@ def load_shaders():
 def process_chunks(skip_smoothing = False):
 	for reg in World.active_regions:
 		while (ch := reg.to_be_loaded.pop(0) if len(reg.to_be_loaded) > 0 else None):
-			while not skip_smoothing and time.time() - Time.last_frame >= 1 / settings.min_FPS:
+			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
 				if UI.in_menu:
 					return
 				time.sleep(0.1)
