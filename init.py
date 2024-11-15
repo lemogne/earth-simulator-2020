@@ -1392,7 +1392,7 @@ class World:
 			return
 		# Update chunk min and max values
 		chmin, chmax = region.chunk_min_max[ch]
-		if block == 0:
+		if seethrough[block]:
 			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / World.chunk_size)
 			chmax_new = region.thorough_chmax(ch) if math.floor(coords[1]) / World.chunk_size >= chmax else chmax
 		else:
