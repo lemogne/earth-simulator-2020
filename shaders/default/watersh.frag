@@ -2,7 +2,7 @@ uniform sampler2D u_texture; // 0
 
 varying vec4 v_color;
 varying vec2 v_texcoord;
-
+uniform vec2 mapsize;
 
 uniform float rt_w; // render target width
 uniform float rt_h; // render target height

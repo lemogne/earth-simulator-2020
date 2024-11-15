@@ -14,7 +14,7 @@ Gres = (2, 2)
 tree_density = 1 / 128
 
 #GRAPHICS
-render_distance = 10
+render_distance = 15		
 ticks_per_second = 15
 maxFPS = 60
 nominal_res = (1205, 720)
