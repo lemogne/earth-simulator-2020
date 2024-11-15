@@ -718,17 +718,18 @@ class Load_World:
 			# Compute chmin, chmax
 			for y in range(World.height):
 				if seethrough[region.chunks[ch][:, y, :]].any():
+					chmin_norm = y
 					region.chunk_min_max[ch] = (y / World.chunk_size, 0)
 					break
 			for y in range(World.height - 1, -1, -1):
 				if (region.chunks[ch][:, y, :] != 0).any():
 					chmin = region.chunk_min_max[ch][0]
-					chmax = y
+					chmax_norm = y
 					region.chunk_min_max[ch] = (chmin, (y / World.chunk_size) - chmin)
 					break
 
 			# Compute lighting data
-			region.light[ch] = compute_lighting(region.chunks[ch][:, :chmax + 1, :])
+			region.light[ch] = compute_lighting(region.chunks[ch][:, chmin_norm:chmax_norm + 2, :]) + chmin_norm
 
 			# Set chunk as generated
 			region.gen_chunks[ch] = True
