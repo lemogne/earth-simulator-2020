@@ -1341,7 +1341,7 @@ class World:
 	infinite = settings.infinite
 	T_res = settings.T_res
 	HL_res = settings.HL_res
-	V_res = settings.V_res
+	B_res = settings.B_res
 	G_res = settings.G_res		
 	C_res = settings.C_res
 
@@ -1349,6 +1349,7 @@ class World:
 	tree_density_var = settings.tree_density_var
 	tree_res = settings.tree_res
 	heightmap = {}
+	biomemap = {}
 	blockmap = {}
 	trees = {}
 	regions = {}
@@ -1371,7 +1372,7 @@ class World:
 		World.region_size = settings.region_size
 		World.T_res = settings.T_res
 		World.HL_res = settings.HL_res
-		World.V_res = settings.V_res
+		World.B_res = settings.B_res
 		World.G_res = settings.G_res
 		World.C_res = settings.C_res
 
@@ -1440,11 +1441,23 @@ class World:
 		ch = (int(chunkpos[0] % World.region_size), int(chunkpos[1] % World.region_size))
 		return (reg, ch)
 
+	def get_hum_temp(latitude, y):
+		# 3 * π ≈ 9.425
+		hum = (np.cos(9.425 * latitude) + 1) * ( -latitude**2 + 1) / 2
+		temp = np.exp(-(3 * latitude + 1)**2) + np.exp(-(3 * latitude - 1)**2) - (y - 40) / 200
+		return np.column_stack((hum, temp)) * types[settings.gpu_data_type][4]
+
 	def process_chunk(chunkpos):
 		region, ch = World.get_region(chunkpos)
 		chunk = region.chunks[ch]
 		blocks = np.vstack(chunk)
 		chunk_light = region.light[ch]
+		chunk_biome = np.vstack(
+			np.reshape(
+				np.tile(World.biomemap[tuple(chunkpos)], World.height), 
+				(World.chunk_size, World.height, World.chunk_size)
+			)
+		)
 		
 		# TODO: add check to not render chunks whose neighbours haven't been generated yet
 
@@ -1466,9 +1479,11 @@ class World:
 		]
 		verts = []
 		tex_verts = []
+		biome_verts = []
 		normals = []
 		transp_verts = []
 		transp_tex_verts = []
+		transp_biome_verts = []
 		transp_normals = []
 		counter = 0
 		counter_transp = 0
@@ -1487,11 +1502,13 @@ class World:
 			blocks_transp = blocks[neighb_transp]
 			coords_transp = World.coord_array[neighb_transp]
 			light_transp = light_neighb[neighb_transp]
+			biome_transp = chunk_biome[neighb_transp]
 
 			solid_mask = ~seethrough[blocks_transp]
 			blocks_show = blocks_transp[solid_mask]  # Solid blocks
 			coords_show = coords_transp[solid_mask]
 			light_show = light_transp[solid_mask]
+			biome_show = biome_transp[solid_mask]
 
 			seethrough_copy = np.concatenate(([False], seethrough[1:]), 0)
 
@@ -1499,15 +1516,21 @@ class World:
 			coords_show_transp = World.coord_array[transp_mask]
 			blocks_show_transp = blocks[transp_mask]
 			light_show_transp = light_neighb[transp_mask]
+			biome_show_transp = chunk_biome[transp_mask]
 
 			transp_mask2 = (neighbours[i] == 8) & (blocks != neighbours[i])
 			coords_show_transp2 = World.coord_array[transp_mask2]
 			blocks_show_transp2 = neighbours[i][transp_mask2]
 			light_show_transp2 = light_neighb[transp_mask2]
+			biome_show_transp2 = chunk_biome[transp_mask2]
 
 			coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
 			light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
 			blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
+			biome_show_transp = np.concatenate((biome_show_transp, biome_show_transp2), 0)
+
+			has_biometint = np.repeat(biometint[blocks_show][:, np.newaxis], 2, 1)
+			has_biometint_transp = np.repeat(biometint[blocks_show_transp][:, np.newaxis], 2, 1)
 
 			if len(coords_show) > 0:
 				c_show_r = np.repeat(coords_show, 6, 0)
@@ -1515,6 +1538,10 @@ class World:
 
 				verts.append(c_show_r + cube_verts - (128, 128, 128))
 				tex_verts.append(np.vstack(Textures.game_blocks[blocks_show, 6 * i:6 * i + 6]))
+				humtemp = World.get_hum_temp(biome_show, coords_show[:, 1])
+				biome_verts.append(np.vstack(np.repeat(
+					has_biometint * humtemp - 30000 * ~has_biometint * np.ones(humtemp.shape)
+				, 6, 0)))
 				normals.append(
 				    np.tile(
 						types[settings.gpu_data_type][4] * Cube.normals[i], 
@@ -1535,6 +1562,10 @@ class World:
 
 				transp_verts.append(c_show_r + cube_verts - (128, 128, 128))
 				transp_tex_verts.append(np.vstack(Textures.game_blocks[blocks_show_transp, 6 * i:6 * i + 6]))
+				humtemp = World.get_hum_temp(biome_show_transp, coords_show_transp[:, 1])
+				transp_biome_verts.append(np.vstack(np.repeat(
+					has_biometint_transp * humtemp - 30000 * ~has_biometint_transp * np.ones(humtemp.shape),
+				 6, 0)))
 				transp_normals.append(
 					np.tile(
 						types[settings.gpu_data_type][4] * Cube.normals[i], 
@@ -1553,6 +1584,7 @@ class World:
 			np.column_stack((
 				np.vstack(verts), 
 				np.vstack(tex_verts), 
+				np.vstack(biome_verts),
 				np.vstack(normals)
 			))
 		).astype(types[settings.gpu_data_type][0])
@@ -1562,6 +1594,7 @@ class World:
 			    np.column_stack((
 					np.vstack(transp_verts), 
 					np.vstack(transp_tex_verts),
+					np.vstack(transp_biome_verts),
 					np.vstack(transp_normals)
 				))
 			).astype(types[settings.gpu_data_type][0])
@@ -1756,6 +1789,7 @@ constV = ((0, 0), (0, 0), (0, 0))
 
 game_blocks = None
 seethrough = None
+biometint = None
 
 character_coords = np.array(((0, 1), (0, 0), (1, 0), (1, 1)))
 chat_string = ""
@@ -1809,9 +1843,10 @@ class Display:
 class Textures:
 
 	def init():
-		global game_blocks, seethrough
+		global game_blocks, seethrough, biometint
 		game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
 		seethrough = np.array(json.loads(open(f"textures/{settings.texture_pack}/transparency.json").read()))
+		biometint = np.array(json.loads(open(f"textures/{settings.texture_pack}/biometint.json").read()))
 		Textures.ui = Textures.load("UI.png")
 		if unicode:
 			try:
@@ -1828,6 +1863,7 @@ class Textures:
 		Textures.logo = Textures.load("logo.png")
 		Textures.title = Textures.load("title.png")
 		Textures.cursor = Textures.load("cursor.png")
+		Textures.biomes = Textures.load("biomes.png", GL_LINEAR)
 
 		title_size = (Textures.title[1].get_width(), Textures.title[1].get_height())
 		Textures.text_ratio = Textures.text[1].get_width() * (

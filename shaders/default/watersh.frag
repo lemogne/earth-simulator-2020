@@ -1,4 +1,5 @@
 uniform sampler2D u_texture; // 0
+uniform sampler2D u_biome; // 1
 uniform vec2 mapsize;
 
 varying vec4 v_color;

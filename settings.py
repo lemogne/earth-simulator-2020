@@ -10,13 +10,13 @@ infinite = True
 heightlim = (10, 110)
 T_res = (16, 16)
 HL_res = (64, 64)
-V_res = (64, 64)
 G_res = (256, 256)		
 C_res = (4096, 4096)
+B_res = (1024, 1024)
 
 tree_density_mean = 1 / 64
 tree_density_var = 1.1
-tree_res = (4, 4)
+tree_res = (16, 16)
 water_level = 33
 
 #GRAPHICS
