@@ -191,7 +191,10 @@ def gen_chunks():
 			if UI.in_menu:
 				return
 			time.sleep(0.1)
-		gen_chunk(ch)
+		if World.regions_to_load:
+			Load_World.load_region(World.regions_to_load.pop(0))
+		else:
+			gen_chunk(ch)
 
 def gen_chunk_thread():
 	try:
