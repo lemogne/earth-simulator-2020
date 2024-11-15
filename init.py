@@ -1886,7 +1886,7 @@ class Display:
 				Display.size = (ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1))
 			else:
 				import subprocess
-				output = subprocess.Popen('xrandr | grep "\*" | cut -d" " -f4', shell=True,
+				output = subprocess.Popen('xrandr | grep "*" | cut -d" " -f4', shell=True,
 				                          stdout=subprocess.PIPE).communicate()[0]
 				output = output.decode()[:-1].split("x")
 				Display.size = (int(output[0]), int(output[1]))
