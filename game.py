@@ -49,6 +49,8 @@ while 1:
 			player.rotate(mouse_pos)
 			render_sky(Time.start)
 			glPushMatrix()
+			glRotatef(player.rot[1], 0, 1, 0)
+			glRotatef(player.rot[0], -player.norm[2], 0, player.norm[0])
 			glTranslatef(-temp_pos[0], -temp_pos[1] - player.height, -temp_pos[2])
 			render(chat_string)
 			glPopMatrix()

@@ -536,7 +536,7 @@ class Load_World:
 
 				make_coord_array()
 				player.pos = np.array((struct.unpack("3f", readfile.read(12))))
-				rv = np.array((struct.unpack("3f", readfile.read(12))))
+				player.rot = np.array((struct.unpack("3f", readfile.read(12))))
 				World.game_time = struct.unpack("i", readfile.read(4))[0]
 
 				# World gen
@@ -597,7 +597,7 @@ class Load_World:
 				World.height = struct.unpack("i", data[19:23])[0]
 				make_coord_array()
 				player.pos = np.array((struct.unpack("3f", data[27:39])))
-				rv = np.array((struct.unpack("3f", data[39:51])))
+				player.rot = np.array((struct.unpack("3f", data[39:51])))
 
 				# Chunk reading loop (reads until end of block data flag is read)
 				i = 51
@@ -1188,9 +1188,6 @@ class Player:
 			self.norm = np.array((-settings.movement_speed * math.sin(math.radians(self.rot[1])),
 			                   -settings.movement_speed * math.tan(math.radians(self.rot[0])),
 			                   settings.movement_speed * math.cos(math.radians(self.rot[1]))))
-
-			glRotatef(rv[1], 0, 1, 0)
-			glRotatef(rv[0], -self.norm[2], 0, self.norm[0])
 
 
 player = Player()
