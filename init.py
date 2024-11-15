@@ -1271,7 +1271,7 @@ class Region:
 				World.regions_to_load.remove(reg_pos)
 			else:
 				return
-		if change_pos or self.chunk_coords is None or force_load:
+		if change_pos or self.chunk_coords is None or force_load or World.new_chunks >= 3:
 			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(
 				(abs(self.chunk_coords[:, :, 0] - player.chunkpos[0] + self.pos[0]),
@@ -1292,10 +1292,11 @@ class Region:
 		if force_load:
 			self.in_view = np.full(shape=len(self.chunk_coords), fill_value=True)
 			player.old_rot = None
-		elif change_pos or change_rot:
+		elif change_pos or change_rot or World.new_chunks >= 3:
 			self.in_view = World.chunk_in_view(self.chunk_coords + self.pos, self.chunk_y_lims)
 		else:
 			return
+		World.new_chunks = 0
 		self.loaded_chunks = dict()
 		while len(self.preloaded_data) > 0:
 			ch, data = self.preloaded_data.popitem()
@@ -1359,6 +1360,7 @@ class World:
 	file = None
 	region_table = {}
 	bytes_for_block_ID = 0
+	new_chunks = 0
 
 	coord_array = []
 	coord_array3 = []
@@ -1385,6 +1387,7 @@ class World:
 		World.region_table = {}
 		World.regions_to_load = []
 		World.bytes_for_block_ID = Save_World.bytesneeded(len(game_blocks))
+		World.new_chunks = 0
 
 	def load_chunks(ForceLoad = False):
 		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
@@ -1992,8 +1995,9 @@ def process_chunks(skip_smoothing = False):
 			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
 				if UI.in_menu:
 					return
-				time.sleep(0.1)
+				time.sleep(0.01)
 			reg.preloaded_data[ch] = World.process_chunk(ch + reg.pos)
+			World.new_chunks += 1
 
 def chunk_thread():
 	try:
