@@ -1621,20 +1621,6 @@ def get_looked_at():
 	return (None, None)
 
 
-def rand(seed, dim, coords):
-	op = []
-	for i in range(dim[0]):
-		for j in range(dim[1]):
-			random.seed(seed + coords[0] * 58274 - coords[1] * 437)
-			random.random()
-			random.random()
-			random.random()
-			random.random()
-			op.append(random.random())
-
-	return np.resize(op, dim)
-
-
 def mode_2D():
 	glMatrixMode(GL_PROJECTION)
 	glPushMatrix()
