@@ -393,9 +393,9 @@ class Start_Game:
 
 class Save_World:
 
+	bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
 	def run():
 		global game_blocks
-		bytesneeded = lambda x: np.int8(math.log(x, 256) + 1 // 1)
 
 		name = UI.buttons["Name"].get_text()
 		try:
@@ -406,10 +406,10 @@ class Save_World:
 			writeBits = lambda data, bits: savefile.write(np.array(data).astype('V' + str(bits)).tobytes())
 
 			# Calculating bytes needed to save world data; saving that information to the file
-			BLblocks = bytesneeded(len(game_blocks))
-			BLpos = bytesneeded(World.height * (World.chunk_size**2))
-			BLch = 4 if World.infinite else bytesneeded(World.region_size)
-			BLheight = bytesneeded(World.height)
+			BLblocks = Save_World.bytesneeded(len(game_blocks))
+			BLpos = Save_World.bytesneeded(World.height * (World.chunk_size**2))
+			BLch = 4 if World.infinite else Save_World.bytesneeded(World.region_size)
+			BLheight = Save_World.bytesneeded(World.height)
 			savefile.write(np.array([BLblocks, BLpos, BLch, BLheight, 0], dtype=np.int8).tobytes())
 			savefile.write(np.array([World.chunk_size, World.height, 0], dtype=np.int32).tobytes())
 			savefile.write(np.array(player.pos, dtype=np.float32).tobytes())
@@ -501,111 +501,214 @@ class Load_World:
 			return
 
 		try:
-			# read data to variable
-			data = readfile.read()
-			readfile.close()
-
 			# check if the file is actually a world, and if it is the right version
-			if data[:4] != b"ES20":
+			magic_const = readfile.read(4)
+			readfile.seek(1, 1)
+			version = readfile.read(4)
+			if magic_const != b"ES20":
 				UI.buttons["Info"].set_text("This file is not a world!")
 				print("This file is not a world!")
 				return
-			elif data[5:9] not in [b"v0.1", b"v0.2", b"v0.3"]:
-				UI.buttons["Info"].set_text(f"The version of the world, " + str(data[5:9], "ASCII") +
-				                            " is not compatible with this version!")
+			if version == b"v0.3":
+				# The world file contains the amount of bytes needed to write certain data (i.e. 1 byte to save a block ID); This data is read here
+				World.file_byte_sizes = struct.unpack("b", readfile.read(2))
+				World.region_size = struct.unpack("b", readfile.read(1))[0]
+				World.height = struct.unpack("i", readfile.read(4))[0]
+				World.chunk_size = struct.unpack("I", readfile.read(4))[0]
+
+				make_coord_array()
+				player.pos = np.array((struct.unpack("3f", readfile.read(12))))
+				rv = np.array((struct.unpack("3f", readfile.read(12))))
+				World.game_time = struct.unpack("i", readfile.read(4))[0]
+
+				# World gen
+				World.seed = struct.unpack("i", readfile.read(4))[0]
+				World.water_level = struct.unpack("i", readfile.read(4))[0]
+				World.heightlim = struct.unpack("2i", readfile.read(8))
+
+				World.T_res = struct.unpack("2f", readfile.read(8))
+				World.HL_res = struct.unpack("2f", readfile.read(8))
+				World.V_res = struct.unpack("2f", readfile.read(8))
+				World.G_res = struct.unpack("2f", readfile.read(8))
+
+				World.tree_res = struct.unpack("2f", readfile.read(8))
+				World.tree_density_mean = struct.unpack("f", readfile.read(4))[0]
+				World.tree_density_var = struct.unpack("f", readfile.read(4))[0]
+				readfile.seek(12, 1)
+
+				# Region table
+				region_table_size = struct.unpack("I", readfile.read(4))[0]
+				World.region_table = dict()
+				for _ in range(region_table_size):
+					World.region_table[struct.unpack("2i", readfile.read(8))] = struct.unpack("2i", readfile.read(8))
+				
+				# Load region where player is
+				region = tuple((player.pos // (World.chunk_size * World.region_size))[[0, 2]])
+				readfile.seek(0, 0)
+				World.file = readfile
+				Load_World.load_region(region, readfile)
+
+			elif version in [b"v0.1", b"v0.2"]:
+				UI.buttons["Info"].set_text(
+					f"This world is from version {str(version, 'ASCII')} and uses an old format."\
+					"Please convert it by re-saving it in this version."\
+					"Worlds in this format will not be supported much longer."
+				)
+				print(UI.buttons["Info"].get_text())
+				readfile.seek(0, 0)
+				data = readfile.read()
+				readfile.close()
+
+				# The world file contains the amount of bytes needed to write certain data (i.e. 1 byte to save a block ID); This data is read here
+				BLblocks = data[10]
+				BLpos = data[11]
+				BLch = data[12]
+				BLheight = data[13]
+				World.chunk_size = struct.unpack("i", data[15:19])[0]
+				World.infinite = False
+
+				# World height, position and camera rotation are read here
+				World.height = struct.unpack("i", data[19:23])[0]
+				make_coord_array()
+				player.pos = np.array((struct.unpack("3f", data[27:39])))
+				rv = np.array((struct.unpack("3f", data[39:51])))
+
+				# Chunk reading loop (reads until end of block data flag is read)
+				i = 51
+				while data[i:i + 6] != b"\x00\x00\x00\x00\x00\x00":
+					pg.event.get()  #prevents window from freezing
+					ChBuffer = []
+
+					chunk = (int.from_bytes(data[i:i + BLch], "little",
+										signed=True), int.from_bytes(data[i + BLch:i + 2 * BLch], "little",
+																	signed=True))  #Chunk position
+					i += BLch * 2
+
+					# reads blocks until chunk end flag is read
+					while data[i:i + 4] != b"\x00\x00\x00\x00":
+						block = int.from_bytes(data[i + BLpos:i + BLpos + BLblocks], "little")
+						ChBuffer += [block] * int.from_bytes(data[i:i + BLpos], "little")
+						i += BLpos + BLblocks
+
+					# Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
+					try:
+						region, ch = World.get_region(chunk)
+						if not region:
+							reg_coords = (chunk[0] // settings.region_size, chunk[1] // settings.region_size)
+							region = Region(reg_coords)
+							World.regions[reg_coords] = region
+						region.chunks[ch] = np.reshape(np.array(ChBuffer),
+													(World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
+					except ValueError:
+						UI.buttons["Info"].set_text("World file corrupted!")
+						print("World file corrupted!")
+						return
+
+					for y in range(World.height):
+						if seethrough[region.chunks[ch][:, y, :]].any():
+							region.chunk_min_max[ch] = (y / World.chunk_size, 0)
+							break
+					for y in range(World.height - 1, -1, -1):
+						if (region.chunks[ch][:, y, :] != 0).any():
+							chmin = region.chunk_min_max[ch][0]
+							region.chunk_min_max[ch] = (chmin, (y / World.chunk_size) - chmin)
+							break
+
+					i += 4
+
+					# Reads lighting data
+					region.light[ch] = np.reshape(
+						np.frombuffer(np.frombuffer(data[i:i + (World.chunk_size**2) * BLheight],
+													dtype=(f"V{BLheight}")).astype("V4"),
+									dtype=np.int32), (World.chunk_size, World.chunk_size))
+					i += (World.chunk_size**2) * BLheight
+
+					# Set chunk as generated
+					region.gen_chunks[ch] = True
+
+					# Check if chunk end flag is present; if not, the file must be corrupted
+					if data[i:i + 4] != b"\x00\x00\x00\x00":
+						UI.buttons["Info"].set_text("World file corrupted!")
+						print("World file corrupted!")
+						return
+					i += 4
+				i += 6
+
+				# Read important world information
+				World.seed = struct.unpack("f", data[i:i + 4])[0]
+				i += 4
+				settings.tree_density_mean = struct.unpack("f", data[i:i + 4])[0]
+				i += 4
+				settings.starting_time = struct.unpack("i", data[i:i + 4])[0]
+			else:
+				UI.buttons["Info"].set_text(f"The version of the world, {str(version, 'ASCII')} is not compatible with this version!")
 				print(UI.buttons["Info"].get_text())
 				return
-
-			# The world file contains the amount of bytes needed to write certain data (i.e. 1 byte to save a block ID); This data is read here
-			BLblocks = data[10]
-			BLpos = data[11]
-			BLch = data[12]
-			BLheight = data[13]
-			World.chunk_size = struct.unpack("i", data[15:19])[0]
-			World.infinite = BLch >= 4
-
-			# World height, position and camera rotation are read here
-			World.height = struct.unpack("i", data[19:23])[0]
-			make_coord_array()
-			player.pos = np.array((struct.unpack("3f", data[27:39])))
-			rv = np.array((struct.unpack("3f", data[39:51])))
-
-			# Chunk reading loop (reads until end of block data flag is read)
-			i = 51
-			while data[i:i + 6] != b"\x00\x00\x00\x00\x00\x00":
-				pg.event.get()  #prevents window from freezing
-				ChBuffer = []
-
-				chunk = (int.from_bytes(data[i:i + BLch], "little",
-				                     signed=True), int.from_bytes(data[i + BLch:i + 2 * BLch], "little",
-				                                                  signed=True))  #Chunk position
-				i += BLch * 2
-
-				# reads blocks until chunk end flag is read
-				while data[i:i + 4] != b"\x00\x00\x00\x00":
-					block = int.from_bytes(data[i + BLpos:i + BLpos + BLblocks], "little")
-					ChBuffer += [block] * int.from_bytes(data[i:i + BLpos], "little")
-					i += BLpos + BLblocks
-
-				# Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
-				try:
-					region, ch = World.get_region(chunk)
-					if not region:
-						reg_coords = (chunk[0] // settings.region_size, chunk[1] // settings.region_size)
-						region = Region(reg_coords)
-						World.regions[reg_coords] = region
-					region.chunks[ch] = np.reshape(np.array(ChBuffer),
-					                              (World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
-				except ValueError:
-					UI.buttons["Info"].set_text("World file corrupted!")
-					print("World file corrupted!")
-					return
-
-				for y in range(World.height):
-					if seethrough[region.chunks[ch][:, y, :]].any():
-						region.chunk_min_max[ch] = (y / World.chunk_size, 0)
-						break
-				for y in range(World.height - 1, -1, -1):
-					if (region.chunks[ch][:, y, :] != 0).any():
-						chmin = region.chunk_min_max[ch][0]
-						region.chunk_min_max[ch] = (chmin, (y / World.chunk_size) - chmin)
-						break
-
-				i += 4
-
-				# Reads lighting data
-				region.light[ch] = np.reshape(
-				    np.frombuffer(np.frombuffer(data[i:i + (World.chunk_size**2) * BLheight],
-				                                dtype=(f"V{BLheight}")).astype("V4"),
-				                  dtype=np.int32), (World.chunk_size, World.chunk_size))
-				i += (World.chunk_size**2) * BLheight
-
-				# Set chunk as generated
-				region.gen_chunks[ch] = True
-
-				# Check if chunk end flag is present; if not, the file must be corrupted
-				if data[i:i + 4] != b"\x00\x00\x00\x00":
-					UI.buttons["Info"].set_text("World file corrupted!")
-					print("World file corrupted!")
-					return
-				i += 4
-			i += 6
-
-			# Read important world information
-			World.seed = struct.unpack("f", data[i:i + 4])[0]
-			i += 4
-			settings.tree_density_mean = struct.unpack("f", data[i:i + 4])[0]
-			i += 4
-			settings.starting_time = struct.unpack("i", data[i:i + 4])[0]
-
 			UI.in_menu = False
 			UI.paused = False
-			make_coord_array()
 
 			UI.buttons["Info"].set_text("World loaded successfully!")
 		except Exception as e:
 			UI.buttons["Info"].set_text(f"Failed to load world: {e}")
 		print(UI.buttons["Info"].get_text())
+
+	def load_region(reg):
+		if reg not in World.region_table:
+			World.new = True	# To force terrain generation if just loaded world
+			return
+		region = Region(reg)
+		World.region[reg] = region
+
+		readfile = World.file
+		readfile.seek(World.region_table[reg][0])
+		BLch = Save_World.bytesneeded(World.region_size)
+		BLblocks, BLpos = World.file_byte_sizes
+
+		# Chunk reading loop (reads until end of block data flag is read)
+		for _ in range(World.region_table[reg][1]):
+			pg.event.get()  #prevents window from freezing
+
+			chunk_length = World.chunk_size**2 * World.height
+			chunk_buffer = np.zeros(chunk_length)
+
+			ch = (int.from_bytes(readfile.read(BLch), "little", signed=True), 
+			      int.from_bytes(readfile.read(BLch), "little", signed=True))  # Chunk position
+
+			# reads blocks until chunk is filled
+			i = 0
+			while i < chunk_length:
+				n = int.from_bytes(readfile.read(BLpos), "little")
+				block = int.from_bytes(readfile.read(BLblocks), "little")
+				chunk_buffer[i:i+n] = block
+				i += n
+
+			# Tries shaping blocks read into a chunk shape; if that is impossible, the the chunk must be malformed and hence the file corrupted
+			try:
+				region.chunks[ch] = np.reshape(np.array(chunk_buffer),
+											(World.chunk_size, World.height, World.chunk_size)).astype(np.uint8).transpose((1, 0, 2))
+			except ValueError:
+				UI.buttons["Info"].set_text("World file corrupted!")
+				print("World file corrupted!")
+				return
+
+			# Compute chmin, chmax
+			for y in range(World.height):
+				if seethrough[region.chunks[ch][:, y, :]].any():
+					region.chunk_min_max[ch] = (y / World.chunk_size, 0)
+					break
+			for y in range(World.height - 1, -1, -1):
+				if (region.chunks[ch][:, y, :] != 0).any():
+					chmin = region.chunk_min_max[ch][0]
+					chmax = y
+					region.chunk_min_max[ch] = (chmin, (y / World.chunk_size) - chmin)
+					break
+
+			# Compute lighting data TODO
+			region.light[ch] = compute_lighting(region.chunks[ch][:, :chmax + 1, :])
+
+			# Set chunk as generated
+			region.gen_chunks[ch] = True
+
 
 	def screen():
 		try:
@@ -1185,6 +1288,9 @@ class World:
 	regions = {}
 	chunks_to_generate = []
 	active_regions = []
+	file = None
+	region_table = {}
+	file_byte_sizes = (Save_World.bytesneeded(len(game_blocks)), Save_World.bytesneeded(height * (chunk_size**2)))
 
 	coord_array = []
 	coord_array3 = []
@@ -1205,6 +1311,10 @@ class World:
 		World.tree_density_var = settings.tree_density_var
 		World.tree_res = settings.tree_res
 		World.infinite = settings.infinite
+
+		World.file = None
+		World.region_table = {}
+		World.file_byte_sizes = (Save_World.bytesneeded(len(game_blocks)), Save_World.bytesneeded(World.height * (World.chunk_size**2)))
 
 	def load_chunks(ForceLoad=False):
 		reg_max = (player.chunkpos + settings.render_distance) // World.region_size
@@ -1700,18 +1810,18 @@ def chunk_thread():
 		World.thread_exception = e
 		print("".join(traceback.format_exc()))
 
-def schematic_lighting(schematic):
-	not_found = np.full((schematic.shape[0], schematic.shape[2]), True)
-	light = np.full((schematic.shape[0], schematic.shape[2]), schematic.shape[1])
-	for y in range(schematic.shape[1] - 1, -1, -1):
-		not_found &= schematic[:, y, :] == 0
+def compute_lighting(blocks):
+	not_found = np.full((blocks.shape[0], blocks.shape[2]), True)
+	light = np.full((blocks.shape[0], blocks.shape[2]), blocks.shape[1])
+	for y in range(blocks.shape[1] - 1, -1, -1):
+		not_found &= blocks[:, y, :] == 0
 		light[not_found] = y - 1
 	return light
 
 def get_schematic(file):
 	raw_json = open(f"schematics/{settings.schematic_pack}/{file}.json").read()
 	schem = np.array(json.loads(raw_json))
-	return (schem, schematic_lighting(schem))
+	return (schem, compute_lighting(schem))
 
 
 def get_looked_at():
