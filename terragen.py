@@ -6,8 +6,8 @@ def f(t):
 
 def gen_trees(coords):
 	total_trees = []
-	for i in range(coords[0] - 1, coords[0] + 1):
-		for j in range(coords[1] - 1, coords[1] + 1):
+	for i in range(coords[0] - 1, coords[0] + 2):
+		for j in range(coords[1] - 1, coords[1] + 2):
 			if (i, j) in World.trees:
 				total_trees.append(World.trees[(i, j)])
 				continue
