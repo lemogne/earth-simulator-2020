@@ -110,12 +110,10 @@ def gen_chunk(coords):
 
 	# Actually generate chunks and calculate lighting
 	chmin = np.min(heightmap) / World.chunk_size
-	region.lock = True
 	region.chunk_min_max[ch] = (chmin, (np.max(heightmap) / World.chunk_size) - chmin)
 	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
 												stone_map).astype(np.uint8)
 	region.light[ch] = ((heightmap > World.water_level) * heightmap + (heightmap < World.water_level) * World.water_level)
-	region.gen_chunks[ch] = True
 
 	trees = gen_trees(coords)
 
@@ -149,8 +147,8 @@ def gen_chunk(coords):
 
 		region.chunks[ch][min_x : max_x, tree[1] + 1 : tree[1] + 1 + dim[1], min_z : max_z][not_air] = tree_part[not_air]
 		region.light[ch][min_x : max_x, min_z : max_z][light_change] = tree_light[light_change] + tree[1] + 1
+	region.gen_chunks[ch] = True
 
-	region.lock = False
 
 # Generate random array of chunks
 def gen_terrain():
