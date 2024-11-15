@@ -56,6 +56,8 @@ def gen_heightmaps(coord_list):
 def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
 	heightmap = World.heightmap[coords]
+	region, ch = World.get_region(coords)
+	#print(region, ch)
 
 	# Neighbouring chunks
 	left  = World.heightmap[(coords[0]-1, coords[1])]
@@ -100,10 +102,10 @@ def gen_chunk(coords):
 
 	# Actually generate chunks and calculate lighting
 	chmin = np.min(heightmap) / settings.chunk_size
-	World.chunk_min_max[coords] = (chmin, (np.max(heightmap) / settings.chunk_size) - chmin)
-	World.chunks[coords] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
+	region.chunk_min_max[ch] = (chmin, (np.max(heightmap) / settings.chunk_size) - chmin)
+	region.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
 												stone_map).astype(np.uint8)
-	World.light[coords] = ((heightmap > settings.water_level) * heightmap + (heightmap < settings.water_level) * settings.water_level)
+	region.light[ch] = ((heightmap > settings.water_level) * heightmap + (heightmap < settings.water_level) * settings.water_level)
 	pg.event.get()	# To prevent operating system from marking process as frozen
 
 	trees = gen_trees(coords)
@@ -131,10 +133,8 @@ def gen_terrain():
 	WorldSize = np.array((2**settings.world_size_F, 2**settings.world_size_F))
 	World.height = settings.world_height
 	World.chunk_size = settings.chunk_size
-	World.chunk_min_max = dict()
 
-	World.chunks = {}
-	World.light = {}
+	World.regions = {(0, 0): Region((0, 0)), (-1, 0): Region((-1, 0)), (0, -1): Region((0, -1)), (-1, -1): Region((-1, -1))}
 	make_coord_array()
 	# Generate Chunk block arrays based on height map
 	for _i in range(WorldSize[0]):

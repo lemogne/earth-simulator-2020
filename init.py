@@ -350,10 +350,8 @@ class Button:
 
 def leave_world():
 	# Unloads chunks and quits the world
-	for ch in World.preloaded_chunks:
-		glDeleteBuffers(1, int(World.preloaded_chunks[ch][0][0]))
-		if World.preloaded_chunks[ch][1] != None:
-			glDeleteBuffers(1, int(World.preloaded_chunks[ch][1][0]))
+	World.regions = {}
+	World.active_regions = {}
 	World.loaded_chunks = {}
 	World.preloaded_chunks = {}
 	UI.paused = False
@@ -1036,22 +1034,92 @@ class Player:
 player = Player()
 player.init()
 
-
-class World:
+class Region:
 	preloaded_chunks = {}
 	loaded_chunks = {}
 	to_be_loaded = []
 	preloaded_data = {}
-	seed = 0
-	chunks = {}
 	chunk_min_max = {}
+	chunks = {}
 	light = {}
+	pos = (0, 0)
+	chunk_coords = None
+	in_view = None
+	chunk_y_lims = None
+
+	def __init__(self, pos):
+		self.preloaded_chunks = dict()
+		self.loaded_chunks = dict()
+		self.to_be_loaded = list()
+		self.preloaded_data = dict()
+		self.chunk_min_max = dict()
+		self.chunks = dict()
+		self.light = dict()
+		self.pos = np.array(pos) * settings.region_size
+		self.chunk_coords = np.array(list(self.chunks.keys()))
+
+	def __del__(self):
+		for ch in self.preloaded_chunks:
+			glDeleteBuffers(1, int(self.preloaded_chunks[ch][0][0]))
+			if self.preloaded_chunks[ch][1] != None:
+				glDeleteBuffers(1, int(self.preloaded_chunks[ch][1][0]))
+
+	def load_chunks(self, change_pos, change_rot, ForceLoad=False):
+		if change_pos:
+			self.chunk_coords = np.array(list(self.chunks.keys()))
+			chunk_distance = settings.chunk_distance(abs(self.chunk_coords[:, 0] - player.chunkpos[0] + self.pos[0]),
+			                                         abs(self.chunk_coords[:, 1] - player.chunkpos[2] + self.pos[1]))
+			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
+			self.chunk_y_lims = np.array(list(self.chunk_min_max.values()))[chunk_distance <= settings.render_distance]
+			player.old_rot = None
+		if ForceLoad:
+			self.in_view = np.full(shape=len(self.chunk_coords), fill_value=True)
+			player.old_rot = None
+		elif change_pos or change_rot:
+			self.in_view = World.chunk_in_view(self.chunk_coords + self.pos, self.chunk_y_lims)
+		else:
+			return
+		self.loaded_chunks = dict()
+		while len(self.preloaded_data) > 0:
+			ch, data = self.preloaded_data.popitem()
+			self.loaded_chunks[ch] = World.load_chunk(data)
+			self.preloaded_chunks[ch] = self.loaded_chunks[ch]
+
+		for ch in self.chunk_coords[self.in_view]:
+			ch = tuple(ch)
+			if not ch in self.preloaded_chunks.keys():
+				if not ch in self.preloaded_data.keys() and not ch in self.to_be_loaded:
+					self.to_be_loaded.append(ch)
+			else:
+				self.loaded_chunks[ch] = self.preloaded_chunks[ch]
+		#print(self.pos, self.to_be_loaded)
+		
+
+	# TODO: possible error: sudden jump in y level between neighbouring chunks
+	# can lead to rendering errors -> fix! (idea: involve surrounding blocks)
+	def thorough_chmin(self, ch):
+		for y in range(World.height):
+			if seethrough[self.chunks[ch][:, y, :]].any():
+				return y / World.chunk_size
+		return World.height
+
+	def thorough_chmax(self, ch):
+		for y in range(World.height - 1, -1, -1):
+			if (self.chunks[ch][:, y, :] != 0).any():
+				chmin = self.chunk_min_max[ch][0]
+				return (y / World.chunk_size) - chmin
+		return 0
+
+class World:
+	seed = 0
 	new = False
 	game_time = 0
 	thread_exception = None
 	height = settings.world_height
 	chunk_size = settings.chunk_size
 	heightmap = {}
+	regions = {}
+	active_regions = []
 
 	def init():
 		World.height = settings.world_height
@@ -1059,37 +1127,20 @@ class World:
 		World.game_time = settings.starting_time
 
 	def load_chunks(ForceLoad=False):
-		global chunk_coords, in_view, chunk_y_lims
-		if (player.old_chunkpos != player.chunkpos).any():
+		reg_max = (player.chunkpos + settings.render_distance) // settings.region_size
+		reg_min = (player.chunkpos - settings.render_distance) // settings.region_size
+		change_pos = (player.old_chunkpos != player.chunkpos).any()
+		change_rot = (player.old_rot != player.rot // 5).any()
+		if change_pos:
 			player.old_chunkpos = player.chunkpos + (0, 0, 0)
-			chunk_coords = np.array(list(World.chunks.keys()))
-			chunk_distance = settings.chunk_distance(abs(chunk_coords[:, 0] - player.chunkpos[0]),
-			                                         abs(chunk_coords[:, 1] - player.chunkpos[2]))
-			chunk_coords = chunk_coords[chunk_distance <= settings.render_distance]
-			chunk_y_lims = np.array(list(World.chunk_min_max.values()))[chunk_distance <= settings.render_distance]
-			player.old_rot = None
-		if ForceLoad:
-			in_view = np.full(shape=len(chunk_coords), fill_value=True)
-			player.old_rot = None
-		elif (player.old_rot != player.rot // 5).any():
+		if change_rot:
 			player.old_rot = player.rot // 5
-			in_view = World.chunk_in_view(chunk_coords, chunk_y_lims)
-		else:
-			return
-
-		World.loaded_chunks = dict()
-		while len(World.preloaded_data) > 0:
-			ch, data = World.preloaded_data.popitem()
-			World.loaded_chunks[ch] = World.load_chunk(data)
-			World.preloaded_chunks[ch] = World.loaded_chunks[ch]
-
-		for ch in chunk_coords[in_view]:
-			ch = tuple(ch)
-			if not ch in World.preloaded_chunks.keys():
-				if not ch in World.preloaded_data.keys() and not ch in World.to_be_loaded:
-					World.to_be_loaded.append(ch)
-			else:
-				World.loaded_chunks[ch] = World.preloaded_chunks[ch]
+		World.active_regions = []
+		for i in range(int(reg_min[0]), int(reg_max[0]) + 1):
+			for j in range(int(reg_min[1]), int(reg_max[1]) + 1):
+				if (i, j) in World.regions:
+					World.regions[(i,j)].load_chunks(change_pos, change_rot, ForceLoad)
+					World.active_regions.append(World.regions[(i, j)])
 
 	def load_chunk(chunkdata):
 		vert_tex_list = chunkdata[0][0]
@@ -1111,10 +1162,20 @@ class World:
 			return ((vbo, counter), (vbo_transp, counter_transp))
 		return ((vbo, counter), None)
 
+	def get_region(chunkpos):
+		reg_coords = (chunkpos[0] // settings.region_size, chunkpos[1] // settings.region_size)
+		if reg_coords in World.regions:
+			reg = World.regions[reg_coords]
+		else:
+			reg = None
+		ch = (chunkpos[0] % settings.region_size, chunkpos[1] % settings.region_size)
+		return (reg, ch)
+
 	def process_chunk(chunkpos):
-		chunk = World.chunks[chunkpos]
+		region, ch = World.get_region(chunkpos)
+		chunk = region.chunks[ch]
 		blocks = np.vstack(chunk)
-		chunk_light = World.light[chunkpos]
+		chunk_light = region.light[ch]
 
 		# Shifts 3D block array by +/-1 in each direction to determine neighbour
 		neighbours = [
@@ -1206,8 +1267,9 @@ class World:
 		return ((vert_tex_list, counter), None)
 
 	def chunk_data(coords):
-		if coords in World.chunks.keys():
-			return World.chunks[coords]
+		region, ch = World.get_region(coords)
+		if region and ch in region.chunks.keys():
+			return region.chunks[ch]
 		else:
 			return np.zeros((World.chunk_size, World.height, World.chunk_size))
 
@@ -1239,8 +1301,9 @@ class World:
 		return inFrustum
 
 	def light_data(coords):
-		if coords in World.light.keys():
-			return World.light[coords]
+		region, ch = World.get_region(coords)
+		if region and ch in region.light.keys():
+			return region.light[ch]
 		else:
 			return np.zeros((World.chunk_size, World.chunk_size))
 
@@ -1252,19 +1315,23 @@ class World:
 		return World.chunk_data((coords[0] // World.chunk_size, coords[2] // World.chunk_size))[math.floor(
 		    coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(coords[2] % World.chunk_size)]
 
-	def update_chunk(ch):
-		if ch in World.loaded_chunks.keys():
-			glDeleteBuffers(1, int(World.loaded_chunks[ch][0][0]))
-			if World.loaded_chunks[ch][1] != None:
-				glDeleteBuffers(1, int(World.loaded_chunks[ch][1][0]))
-			del World.loaded_chunks[ch], World.preloaded_chunks[ch]
-		World.preloaded_chunks[ch] = World.load_chunk(World.process_chunk(ch))
+	def update_chunk(coords):
+		region, ch = World.get_region(coords)
+		if not region:
+			return
+		if ch in region.loaded_chunks.keys():
+			glDeleteBuffers(1, int(region.loaded_chunks[ch][0][0]))
+			if region.loaded_chunks[ch][1] != None:
+				glDeleteBuffers(1, int(region.loaded_chunks[ch][1][0]))
+			del region.loaded_chunks[ch], region.preloaded_chunks[ch]
+		region.preloaded_chunks[ch] = World.load_chunk(World.process_chunk(coords))
 
 	def set_block(coords, block):
 		if coords is None:
 			return
 		chunk = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
-		if not chunk in World.chunks.keys() or coords[1] > World.height:
+		region, ch = World.get_region(chunk)
+		if not region or coords[1] > World.height:
 			print("Cannot build outside world!")
 			return
 		if block >= len(game_blocks) or block < 0:
@@ -1273,22 +1340,19 @@ class World:
 		World.put_block(coords, block)
 		World.update_chunk(chunk)
 		if math.floor(coords[0] % World.chunk_size) == 0:
-			if (chunk[0] - 1, chunk[1]) in World.loaded_chunks.keys():
-				World.update_chunk((chunk[0] - 1, chunk[1]))
+			World.update_chunk((chunk[0] - 1, chunk[1]))
 		elif math.floor(coords[0] % World.chunk_size) == World.chunk_size - 1:
-			if (chunk[0] + 1, chunk[1]) in World.loaded_chunks.keys():
-				World.update_chunk((chunk[0] + 1, chunk[1]))
+			World.update_chunk((chunk[0] + 1, chunk[1]))
 		if math.floor(coords[2] % World.chunk_size) == 0:
-			if (chunk[0], chunk[1] - 1) in World.loaded_chunks.keys():
-				World.update_chunk((chunk[0], chunk[1] - 1))
+			World.update_chunk((chunk[0], chunk[1] - 1))
 		elif math.floor(coords[2] % World.chunk_size) == World.chunk_size - 1:
-			if (chunk[0], chunk[1] + 1) in World.loaded_chunks.keys():
-				World.update_chunk((chunk[0], chunk[1] + 1))
+			World.update_chunk((chunk[0], chunk[1] + 1))
 
 	def put_block(coords, block):
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
+		region, ch = World.get_region(ch)
 
-		currentLight = math.floor(World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
+		currentLight = math.floor(region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
 		    coords[2] % World.chunk_size)])
 		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == currentLight:
 			h = math.floor(coords[1]) - 1
@@ -1297,39 +1361,24 @@ class World:
 					break
 				h -= 1
 			else:
-				World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)] = h
+				region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)] = h
 		elif block != 0 and coords[1] > currentLight:
-			World.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
+			region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
 			                                                                     World.chunk_size)] = coords[1]
-		World.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
+		region.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
 		    coords[2] % World.chunk_size)] = block
 
 		# Update chunk min and max values
-		chmin, chmax = World.chunk_min_max[ch]
+		chmin, chmax = region.chunk_min_max[ch]
 		if block == 0:
 			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / World.chunk_size)
-			chmax_new = World.thorough_chmax(ch) if coords[1] == chmax else chmax
+			chmax_new = region.thorough_chmax(ch) if coords[1] == chmax else chmax
 		else:
 			chmax_new = max(chmin + chmax, math.floor(coords[1]) / World.chunk_size) - chmin
-			chmin_new = World.thorough_chmin(ch) if coords[1] == chmin else chmin
-		if World.chunk_min_max[ch] != (chmin_new, chmax_new):
+			chmin_new = region.thorough_chmin(ch) if coords[1] == chmin else chmin
+		if region.chunk_min_max[ch] != (chmin_new, chmax_new):
 			player.old_chunkpos = None
-		World.chunk_min_max[ch] = (chmin_new, chmax_new)
-
-	# TODO: possible error: sudden jump in y level between neighbouring chunks
-	# can lead to rendering errors -> fix! (idea: involve surrounding blocks)
-	def thorough_chmin(ch):
-		for y in range(World.height):
-			if seethrough[World.chunks[ch][:, y, :]].any():
-				return y / World.chunk_size
-		return World.height
-
-	def thorough_chmax(ch):
-		for y in range(World.height - 1, -1, -1):
-			if (World.chunks[ch][:, y, :] != 0).any():
-				chmin = World.chunk_min_max[ch][0]
-				return (y / World.chunk_size) - chmin
-		return 0
+		region.chunk_min_max[ch] = (chmin_new, chmax_new)
 
 
 coordArray = []
@@ -1513,10 +1562,11 @@ def load_shaders():
 
 
 def process_chunks():
-	while len(World.to_be_loaded) > 0:
-		pg.event.get()
-		ch = World.to_be_loaded.pop()
-		World.preloaded_data[ch] = World.process_chunk(ch)
+	for reg in World.active_regions:
+		while len(reg.to_be_loaded) > 0:
+			pg.event.get()
+			ch = reg.to_be_loaded.pop()
+			reg.preloaded_data[ch] = World.process_chunk(ch + reg.pos)
 
 
 def chunk_thread():
