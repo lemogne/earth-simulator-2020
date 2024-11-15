@@ -57,7 +57,8 @@ def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
 	heightmap = World.heightmap[coords]
 	region, ch = World.get_region(coords)
-	#print(region, ch)
+	if region.gen_chunks[ch]:
+		return
 
 	# Neighbouring chunks
 	left  = World.heightmap[(coords[0]-1, coords[1])]
@@ -131,7 +132,6 @@ def gen_chunk(coords):
 
 # Generate random array of chunks
 def gen_terrain():
-	WorldSize = np.array((2**settings.world_size_F, 2**settings.world_size_F))
 	World.height = settings.world_height
 	World.chunk_size = settings.chunk_size
 

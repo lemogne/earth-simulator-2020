@@ -3,7 +3,6 @@ import numpy as np
 #WORLD GENERATION
 chunk_size = 16
 world_height = 256
-world_size_F = 5
 region_size = 32
 
 heightlim = (10, 100)
