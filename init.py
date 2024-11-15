@@ -135,11 +135,29 @@ class Interface:
 
 class UI:
 	buttons = Interface({})
+	char_sizes = [None, None]
 	in_menu = True
 	paused = False
 	show_game_info = False
 
-	def write(text, loc, size, width=2, chardim=(settings.letter_offset, 1.0), color=(1, 1, 1)):
+	def init_font():
+		raw_json = open(f"textures/{settings.texture_pack}/font.json").read()
+		char_size_dict = json.loads(raw_json)
+		default_size = char_size_dict["default"] if "default" in char_size_dict else [1, 4]
+		UI.char_sizes[0] = np.full(Textures.texttable_height * 16, default_size[0] / 8, dtype=np.float64)
+		UI.char_sizes[1] = np.full(Textures.texttable_height * 16, (default_size[1] + 2) / 8, dtype=np.float64)
+
+		for char in char_size_dict:
+			if len(char) != 1:
+				continue
+			if ord(char) > Textures.texttable_height * 16:
+				print(f"Warning: character {char} defined in texturepack {settings.texture_pack} outside valid range")
+				continue
+			UI.char_sizes[0][ord(char)] = char_size_dict[char][0] / 8
+			UI.char_sizes[1][ord(char)] = (char_size_dict[char][1] + 2) / 8
+
+
+	def write(text, loc, size, width=2, color=(1, 1, 1)):
 		if text == "":
 			return
 
@@ -149,7 +167,7 @@ class UI:
 
 		def rcount(a):
 			# Source: StackOverflow
-			without_reset = np.arange(1, len(a) + 1)
+			without_reset = np.insert((UI.char_sizes[1][a][:-1] - UI.char_sizes[0][a][1:]).cumsum(), 0, 0)
 			reset_at = (a == ord('\n'))
 			overcount = np.maximum.accumulate(without_reset * reset_at)
 			result = without_reset - overcount - 1
@@ -158,8 +176,8 @@ class UI:
 		glColor3fv(color)
 
 		loc = np.array(loc)
-		chardim = np.array(chardim)
 		text_array = np.char.expandtabs(text, 4).reshape(1).view(np.int32)
+		text_array = text_array[(text_array < Textures.texttable_height * 16)]
 		printable = text_array >= 32
 
 		column = rcount(text_array)
@@ -174,7 +192,7 @@ class UI:
 		char_index = np.array((text_array & 15, ((Textures.texttable_height << 4) - 1 - text_array) >> 4)).T
 		tiled_chars = np.tile(char_index, (1, 4)).reshape((len(text_array), 4, 2))
 		tex = ((tiled_chars + character_coords) / (16, Textures.texttable_height)).ravel()
-		vert = (loc + ((character_coords + chardim * column_line_tiled) * size) *
+		vert = (loc + ((character_coords + column_line_tiled) * size) *
 		        ((Display.centre[1] / Display.centre[0]) * Textures.text_ratio, 1)).ravel()
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0)
@@ -244,13 +262,13 @@ class UI:
 			box = button.get_box()
 			if button.has_texture() and button.is_text_box():
 				UI.write(button.get_text(),
-				         ((box[0] * settings.button_scale + 0.05)[0] * (Display.centre[1] / Display.centre[0]),
+				         ((box[0] * settings.button_scale + 0.1)[0] * (Display.centre[1] / Display.centre[0]),
 				          (box[0] * settings.button_scale - 0.1)[1]),
 				         0.05,
 				         color=(0, 0, 0))
 			else:
 				UI.write(button.get_text(),
-				         ((box[0] * settings.button_scale + 0.05)[0] * (Display.centre[1] / Display.centre[0]),
+				         ((box[0] * settings.button_scale + 0.1)[0] * (Display.centre[1] / Display.centre[0]),
 				          (box[0] * settings.button_scale - 0.1)[1]), 0.05)
 
 	def type_button(name, var, type_):
@@ -1475,5 +1493,6 @@ init_pygame()
 Display.init()
 Textures.init()
 Textures.update_pixel_size()
+UI.init_font()
 init_schematics()
 Sky.init()
