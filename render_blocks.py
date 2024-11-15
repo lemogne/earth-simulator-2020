@@ -33,7 +33,7 @@ def render_sky(time_start):
 	glEnable(GL_DEPTH_TEST)
 
 def render(chat_string):
-	#render blocks
+	# render blocks
 	if World.get_block(player.pos + (0, player.height, 0)) == 8:
 		glUseProgram(water_shader)
 	else:
@@ -45,12 +45,13 @@ def render(chat_string):
 
 	World.load_chunks()
 
-	#Load solid blocks
+	# Load solid blocks
 	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
 	glMatrixMode(GL_MODELVIEW)
 	glPushMatrix()
 	glTranslatef(128, 128, 128)
 
+	# Activate Biome texture
 	glActiveTexture(GL_TEXTURE1)
 	glClientActiveTexture(GL_TEXTURE1)
 	glEnable(GL_TEXTURE_COORD_ARRAY)
@@ -67,7 +68,7 @@ def render(chat_string):
 			render_chunk(reg.loaded_chunks[loaded_chunk][0])
 			glPopMatrix()
 
-	#Load transparent blocks
+	# Load transparent blocks
 	glEnable(GL_BLEND)
 	for reg in World.active_regions:
 		for loaded_chunk in reg.loaded_chunks:
@@ -79,21 +80,14 @@ def render(chat_string):
 	
 	glPopMatrix()
 
-	glActiveTexture(GL_TEXTURE1)
-	glClientActiveTexture(GL_TEXTURE1)
-	glBindTexture(GL_TEXTURE_2D, 0)
-	glDisable(GL_TEXTURE_COORD_ARRAY)
-	glClientActiveTexture(GL_TEXTURE0)
-	glActiveTexture(GL_TEXTURE0)
-
-	#Highlight block being looked at
+	# Highlight block being looked at
 	if (looked_at := get_looked_at()[0]) is not None:
 		highlight_block(looked_at // 1)
 
 	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
 	mode_2D()
 
-	#Draw block overlay if head inside (non-air) block
+	# Draw block overlay if head inside (non-air) block
 	if World.get_block(player.pos + (0, player.height, 0)) != 0:
 		glBegin(GL_TRIANGLES)
 		for i in range(6):
@@ -102,7 +96,15 @@ def render(chat_string):
 			           (Cube.vertices[Cube.triangles[0][i]][1] - 0.5) * (Display.centre[0] / Display.centre[1]) * 2)
 		glEnd()
 
-	#Draw currently selected block texture
+	# Deactivate Biome texture
+	glActiveTexture(GL_TEXTURE1)
+	glClientActiveTexture(GL_TEXTURE1)
+	glBindTexture(GL_TEXTURE_2D, 0)
+	glDisable(GL_TEXTURE_COORD_ARRAY)
+	glClientActiveTexture(GL_TEXTURE0)
+	glActiveTexture(GL_TEXTURE0)
+
+	# Draw currently selected block texture
 	glUseProgram(sky_shader)
 	if settings.shown:
 		if settings.current_block:
@@ -114,11 +116,11 @@ def render(chat_string):
 					Cube.vertices[Cube.triangles[0][i]][1] * settings.icon_size + settings.icon_offset[1])
 			glEnd()
 
-		#Write chat
+		# Write chat
 		glBindTexture(GL_TEXTURE_2D, Textures.text[0])
 		UI.write(chat_string, (-0.9475, 0.875), 0.03125)
 
-		#Draw crosshair
+		# Draw crosshair
 		if settings.show_crosshair:
 			glBindTexture(GL_TEXTURE_2D, Textures.cursor[0])
 			glBegin(GL_QUADS)
@@ -127,7 +129,7 @@ def render(chat_string):
 				glVertex2f(character_coords[i][0] * (Display.centre[1] / Display.centre[0]) * 0.1 - 0.05, character_coords[i][1] * 0.1 - 0.05)
 			glEnd()
 
-	#Draw pause menu
+	# Draw pause menu
 	glColor3f(1.0, 1.0, 1.0)
 	if UI.paused:
 		UI.render_buttons()
