@@ -9,7 +9,7 @@ while 1:
 
 	World.load_chunks(True)
 	process_chunks()
-	chunk_loop = Thread(target=chunk_thread)
+	chunk_loop = Thread(target = chunk_thread, daemon = True)
 	chunk_loop.start()
 
 	timeStart = time.time()
