@@ -22,6 +22,7 @@ def render_sky(time_start):
 	glDisable(GL_DEPTH_TEST)
 	World.game_time = settings.starting_time + round(((time.time() - time_start) / settings.day_length) * 1024)
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
+	glBindTexture(GL_TEXTURE_2D, Textures.sky[0])
 	glVertexPointer(3, GL_DOUBLE, 0, Sky.vert_list)
 	glTexCoordPointer(2, GL_DOUBLE, 0, Sky.get_tex())
 	glNormalPointer(GL_DOUBLE, 0, Sky.normals)
@@ -36,12 +37,13 @@ def render(chat_string):
 		glUseProgram(DayNightShader)
 	bright_loc = glGetUniformLocation(DayNightShader, "brightness")
 	mapsize_loc = glGetUniformLocation(DayNightShader, "mapsize")
-	glUniform1f(bright_loc, (clamp(math.cos((World.game_time / 1024) * 2 * math.pi) * 2, -1, 1) + 1) / 2)
+	glUniform1f(bright_loc, 1 - Sky.texture_offset(World.game_time))
 	glUniform2f(mapsize_loc, *(Textures.mapsize))
 
 	World.load_chunks()
 
 	#Load solid blocks
+	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
 	glMatrixMode(GL_MODELVIEW)
 	glPushMatrix()
 	glTranslatef(128, 128, 128)
@@ -107,6 +109,5 @@ def render(chat_string):
 		UI.render_buttons()
 		glColor3fv(settings.pause_menu_color)
 
-	glBindTexture(GL_TEXTURE_2D, Textures.terrain[0])
 	glDisable(GL_BLEND)
 	mode_3D()

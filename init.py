@@ -1408,6 +1408,7 @@ class Textures:
 			Textures.text = Textures.load("ascii.png")
 			Textures.texttable_height = 16
 		Textures.terrain = Textures.load("textures.png")
+		Textures.sky = Textures.load("sky.png", GL_LINEAR)
 		Textures.logo = Textures.load("logo.png")
 		Textures.title = Textures.load("title.png")
 		Textures.cursor = Textures.load("cursor.png")
@@ -1423,7 +1424,6 @@ class Textures:
 
 		Textures.mapsize_big = (Textures.terrain[1].get_width(), Textures.terrain[1].get_height())
 		Textures.mapsize = np.array(Textures.mapsize_big) / 16
-		Textures.sky_v = (Textures.mapsize_big[1] - 16) / Textures.mapsize_big[1]
 		Textures.game_blocks = Textures.generate(game_blocks)
 
 	def update_pixel_size():
@@ -1435,13 +1435,13 @@ class Textures:
 		TexArray = []
 		for block in blocks:
 			CS = np.tile(Cube.sides, (6, 1))
+			tiles = np.array(block)[Face[len(block) - 1]]
 			BR = np.repeat(
-			    np.array([np.array(block)[Face[len(block) - 1]],
-			              np.array([Textures.mapsize[1]] * 6)]).T, 6, 0)
+			    np.array([tiles % Textures.mapsize[0], -(tiles + 1) // Textures.mapsize[0]]).T, 6, 0)
 			TexArray.append(CS + BR)
 		return np.array(TexArray)
 
-	def load(file):
+	def load(file, filter = GL_NEAREST):
 		textureSurface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
 		textureData = pg.image.tostring(textureSurface, "RGBA", 1)
 
@@ -1454,8 +1454,8 @@ class Textures:
 					GL_UNSIGNED_BYTE, textureData)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter)
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter)
 		return (texid, textureSurface)
 
 class Sky:
@@ -1467,10 +1467,10 @@ class Sky:
 	normals = np.zeros(len(vert_list))
 
 	def init():
-		t = Textures.sky_v
-		b = 1
+		t = 0.05
+		b = 0.95
 		m = (2 * t + b) / 3
-		Sky.tex_list = np.array([(0, m), (0, m), (0, t)] * 4 + [(0, b), (0, b), (0, b - 0.01)] * 4 +
+		Sky.tex_list = np.array([(0, m), (0, m), (0, t)] * 4 + [(0, b), (0, b), (0, b)] * 4 +
 		                        [(0, b), (0, m), (0, b), (0, b), (0, m), (0, m)] * 4)
 
 	def get_tex():
@@ -1478,10 +1478,8 @@ class Sky:
 		return Sky.tex_list + (tempS, 0)
 
 	def texture_offset(time):
-		time %= 1024
-		time -= 512
-		time = 512 - abs(time)
-		return min(511, time) / Textures.mapsize_big[0]
+		hardness = 2
+		return (clamp(-math.cos((time / settings.day_length) * 2 * math.pi) * hardness, -0.9, 0.9) + 1) / 2
 
 
 
