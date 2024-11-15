@@ -508,6 +508,7 @@ class Load_World:
 					UI.buttons["Info"].set_text("World file corrupted!")
 					print("World file corrupted!")
 					return
+
 				for y in range(settings.world_height):
 					if seethrough[World.chunks[ch][:, y, :]].any():
 						World.chunk_min_max[ch] = (y / settings.chunk_size, 0)
@@ -1262,6 +1263,7 @@ class World:
 
 	def put_block(coords, block):
 		ch = (coords[0] // settings.chunk_size, coords[2] // settings.chunk_size)
+
 		currentLight = math.floor(World.light[ch][math.floor(coords[0] % settings.chunk_size)][math.floor(
 		    coords[2] % settings.chunk_size)])
 		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == currentLight:
@@ -1279,6 +1281,29 @@ class World:
 		World.chunks[ch][math.floor(coords[0] % settings.chunk_size)][math.floor(coords[1])][math.floor(
 		    coords[2] % settings.chunk_size)] = block
 
+		# Update chunk min and max values
+		chmin, chmax = World.chunk_min_max[ch]
+		if block == 0:
+			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / settings.chunk_size)
+			chmax_new = World.thorough_chmax(ch) if coords[1] == chmax else chmax
+		else:
+			chmax_new = max(chmin + chmax, math.floor(coords[1]) / settings.chunk_size) - chmin
+			chmin_new = World.thorough_chmin(ch) if coords[1] == chmin else chmin
+		if World.chunk_min_max[ch] != (chmin_new, chmax_new):
+			player.old_chunkpos = None
+		World.chunk_min_max[ch] = (chmin_new, chmax_new)
+
+
+	def thorough_chmin(ch):
+		for y in range(settings.world_height):
+			if seethrough[World.chunks[ch][:, y, :]].any():
+				return y / settings.chunk_size
+
+	def thorough_chmax(ch):
+		for y in range(settings.world_height-1, -1, -1):
+			if (World.chunks[ch][:, y, :] != 0).any():
+				chmin = World.chunk_min_max[ch][0]
+				return (y / settings.chunk_size) - chmin
 
 coordArray = []
 

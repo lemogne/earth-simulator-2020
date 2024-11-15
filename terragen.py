@@ -54,7 +54,7 @@ def gen_terrain():
 			               _k * settings.chunk_size:(_k + 1) * settings.chunk_size]
 
 			# Cut-down heightmap copied for each y value
-			currentHeight = np.transpose(np.tile(hm, (settings.world_height, 1, 1)), (1, 0, 2))
+			current_height = np.transpose(np.tile(hm, (settings.world_height, 1, 1)), (1, 0, 2))
 
 			# Terrain map (of where grass should be) cut down to current chunk and copied for each y value
 			tm = np.transpose(
@@ -63,19 +63,21 @@ def gen_terrain():
 			                   _k * settings.chunk_size:(_k + 1) * settings.chunk_size], (settings.world_height, 1, 1)), (1, 0, 2))
 
 			# Create masks for each generated block type
-			BlockMap = heights <= currentHeight
-			WaterMap = (heights > currentHeight) & (heights < 34)
-			SurfaceMap = heights == currentHeight
-			GrassMap = SurfaceMap & (heights > 34) & tm
-			SandMap = SurfaceMap & (heights < 35)
-			DirtMap = BlockMap & (heights > (currentHeight - 3)) & ~SurfaceMap & tm
-			StoneMap = BlockMap & ~GrassMap & ~SandMap & ~DirtMap
+			block_map = heights <= current_height
+			water_map = (heights > current_height) & (heights < 34)
+			surface_map = heights == current_height
+			grass_map = surface_map & (heights > 34) & tm
+			sand_map = surface_map & (heights < 35)
+			dirt_map = block_map & (heights > (current_height - 3)) & ~surface_map & tm
+			stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map
 
 			# Actually generate chunks and calculate lighting
-			World.chunks[(_i - WorldSize[0] // 2,
-			              _k - WorldSize[1] // 2)] = (8 * WaterMap + 2 * GrassMap + 9 * SandMap + 3 * DirtMap +
-			                                          StoneMap).astype(np.uint8)
-			World.light[(_i - WorldSize[0] // 2, _k - WorldSize[1] // 2)] = ((hm > 33) * hm + (hm < 34) * 33)
+			ch = (_i - WorldSize[0] // 2, _k - WorldSize[1] // 2)
+			chmin = np.min(hm) / settings.chunk_size
+			World.chunk_min_max[ch] = (chmin, (np.max(hm) / settings.chunk_size) - chmin)
+			World.chunks[ch] = (8 * water_map + 2 * grass_map + 9 * sand_map + 3 * dirt_map +
+			                                          stone_map).astype(np.uint8)
+			World.light[ch] = ((hm > 33) * hm + (hm < 34) * 33)
 			pg.event.get()	# To prevent operating system from marking process as frozen
 
 	# Generate tree map
