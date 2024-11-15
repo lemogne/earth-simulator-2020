@@ -1020,20 +1020,20 @@ class World:
 	thread_exception = None
 
 	def load_chunks(ForceLoad=False):
-		global chCoords, IIV
+		global chunk_coords, in_view
 		if player.old_chunkpos != player.chunkpos:
 			player.old_chunkpos = player.chunkpos
-			chCoords = np.array(list(World.chunks.keys()))
-			chDistance = settings.chunk_distance(abs(chCoords[:, 0] - player.chunkpos[0]),
-			                                     abs(chCoords[:, 1] - player.chunkpos[2]))
-			chCoords = chCoords[chDistance <= settings.render_distance]
+			chunk_coords = np.array(list(World.chunks.keys()))
+			chDistance = settings.chunk_distance(abs(chunk_coords[:, 0] - player.chunkpos[0]),
+			                                     abs(chunk_coords[:, 1] - player.chunkpos[2]))
+			chunk_coords = chunk_coords[chDistance <= settings.render_distance]
 			player.old_rot = None
 		if ForceLoad:
-			IIV = np.full(shape=len(chCoords), fill_value=True)
+			in_view = np.full(shape=len(chunk_coords), fill_value=True)
 			player.old_rot = None
 		elif player.old_rot != player.rot:
 			player.old_rot = player.rot
-			IIV = World.chunk_in_view(chCoords)
+			in_view = World.chunk_in_view(chunk_coords)
 
 		World.loaded_chunks = dict()
 		while len(World.preloaded_data) > 0:
@@ -1041,7 +1041,7 @@ class World:
 			World.loaded_chunks[ch] = World.load_chunk(data)
 			World.preloaded_chunks[ch] = World.loaded_chunks[ch]
 
-		for ch in chCoords[IIV]:
+		for ch in chunk_coords[in_view]:
 			ch = tuple(ch)
 			if not ch in World.preloaded_chunks.keys():
 				if not ch in World.preloaded_data.keys() and not ch in World.to_be_loaded:
