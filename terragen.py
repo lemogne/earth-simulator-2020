@@ -1,39 +1,26 @@
 from init import *
 import opensimplex as noise
 
-def generate_perlin_noise_2d(coords, shape, res, seed=None):
-	if seed == None:
-		seed = World.seed
+def gen_trees(coords):
+	trees = []
+	for i in range(coords[0] - 1, coords[0] + 2):
+		for j in range(coords[1] - 1, coords[1] + 2):
+			# Calculate trees in chunk
+			avg_n = settings.chunk_size * settings.chunk_size * settings.tree_density_mean
+			n = noise.noise2(i / settings.T_res[0], j / settings.T_res[1]) * settings.tree_density_var * avg_n
+			n += settings.chunk_size * settings.chunk_size * settings.tree_density_mean
 
-	seed += coords[0] * 58274
-	seed += coords[1] * (-437)
+			# Generate tree coordinates
+			for k in range(int(n)):
+				x = (noise.noise2(i + 64324.4 - 434.23 * k, j + 728491.2 - 8174.283 * k) + 1) / 2
+				z = (noise.noise2(i - 46324.4 + 344.23 * k, j - 278491.2 + 1874.283 * k) + 1) / 2
+				tree_type = noise.noise2(i - 2361.53 + 71834.23 * k, j - 94829.4 + 33428.3 * k) > 0
+				x = int(x * settings.chunk_size)
+				z = int(z * settings.chunk_size)
+				y = int(World.heightmap[(i, j)][x, z])
+				trees.append((x + i * settings.chunk_size, y, z + j * settings.chunk_size, tree_type))
+	return np.array(trees)
 
-	def f(t):
-		return 6 * t**5 - 15 * t**4 + 10 * t**3
-
-	delta = (res[0] / shape[0], res[1] / shape[1])
-	d = (shape[0] // res[0], shape[1] // res[1])
-	#print(d)
-	#print(shape)
-	#print(res)
-	grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]].transpose(1, 2, 0) % 1
-	# Gradients
-	angles = 2 * np.pi * rand(seed, (res[0] + 1, res[1] + 1), coords)
-	gradients = np.dstack((np.cos(angles), np.sin(angles)))
-	g00 = gradients[0:-1, 0:-1].repeat(d[0], 0).repeat(d[1], 1)
-	g10 = gradients[1:, 0:-1].repeat(d[0], 0).repeat(d[1], 1)
-	g01 = gradients[0:-1, 1:].repeat(d[0], 0).repeat(d[1], 1)
-	g11 = gradients[1:, 1:].repeat(d[0], 0).repeat(d[1], 1)
-	# Ramps
-	n00 = np.sum(grid * g00, 2)
-	n10 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1])) * g10, 2)
-	n01 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1] - 1)) * g01, 2)
-	n11 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1] - 1)) * g11, 2)
-	# Interpolation
-	t = f(grid)
-	n0 = n00 * (1 - t[:, :, 0]) + t[:, :, 0] * n10
-	n1 = n01 * (1 - t[:, :, 0]) + t[:, :, 0] * n11
-	return np.sqrt(2) * ((1 - t[:, :, 1]) * n0 + t[:, :, 1] * n1)
 
 def gen_heightmaps(coord_list):
 	def f(t):
@@ -67,7 +54,7 @@ def gen_heightmaps(coord_list):
 		World.heightmap[t_coords] = heightmap
 
 def gen_chunk(coords):
-	gen_heightmaps(np.array([[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0]]) + coords)
+	gen_heightmaps(np.array([[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) + coords)
 	heightmap = World.heightmap[coords]
 
 	# Neighbouring chunks
@@ -119,6 +106,26 @@ def gen_chunk(coords):
 	World.light[coords] = ((heightmap > settings.water_level) * heightmap + (heightmap < settings.water_level) * settings.water_level)
 	pg.event.get()	# To prevent operating system from marking process as frozen
 
+	trees = gen_trees(coords)
+
+	if len(trees) > 0:
+		trees = trees[trees[:, 1] > 35]
+
+	# Paste Trees into terrain:
+	for tree in trees:
+		pg.event.get()
+		if World.get_block(tree[:3] + (-2, 0, -3)) != 2:
+			continue
+		for x in range(5):
+			for y in range(7):
+				for z in range(6):
+					a_x = x + tree[0] - 2
+					a_z = z + tree[2] - 3
+					x_in_bounds = coords[0] * settings.chunk_size <= a_x < (coords[0] + 1) * settings.chunk_size
+					z_in_bounds = coords[1] * settings.chunk_size <= a_z < (coords[1] + 1) * settings.chunk_size
+					if schematic["tree"][tree[3]][x, y, z] != 0 and x_in_bounds and z_in_bounds:
+						World.put_block((a_x, y + tree[1] + 1, a_z), schematic["tree"][tree[3]][x, y, z])
+
 # Generate random array of chunks
 def gen_terrain():
 	WorldSize = np.array((2**settings.world_size_F, 2**settings.world_size_F))
@@ -139,41 +146,5 @@ def gen_terrain():
 
 
 	# Setup
-	player.pos = np.array((
-	    -0.5,
-	    100.0,
-		-0.5)
+	player.pos = np.array((-0.5, World.heightmap[(0, 0)][0, 0] + 1,-0.5)
 	)
-	return
-	# Generate tree map
-
-	# -Coordinates and types for trees
-	x = np.hstack(
-	    rand(World.seed, (round(settings.tree_density * WorldSize[1] * WorldSize[0] * (settings.chunk_size**2)), 1)) *
-	    (WorldSize[0] * settings.chunk_size - 8)).astype(int)
-	z = np.hstack(
-	    rand(World.seed + 89128,
-	         (round(settings.tree_density * WorldSize[1] * WorldSize[0] * (settings.chunk_size**2)), 1)) *
-	    (WorldSize[1] * settings.chunk_size - 8)).astype(int)
-	t_type = np.hstack(
-	    rand(World.seed + 928734, (round(settings.tree_density * WorldSize[1] * WorldSize[0] *
-	                                     (settings.chunk_size**2)), 1)) * len(schematic["tree"])).astype(int)
-
-	# -Create list of trees
-	trees = np.array((x, heightmap[x + 2, z + 3] + 1, z, t_type)).T
-	if len(trees) > 0:
-		trees = trees[terrainmap[x + 2, z + 3]]
-		trees = trees[trees[:, 1] > 35]
-
-	# Paste Trees into terrain:
-	for tree in trees:
-		pg.event.get()
-		for x in range(5):
-			for y in range(7):
-				for z in range(6):
-					#print(schematic["tree"][tree[3]])
-					if schematic["tree"][tree[3]][x, y, z] != 0:
-						World.put_block(
-						    (tree[0] + x - (WorldSize[0] / 2) * settings.chunk_size, tree[1] + y, tree[2] + z -
-						     (WorldSize[1] / 2) * settings.chunk_size), schematic["tree"][tree[3]][x, y, z])
-
