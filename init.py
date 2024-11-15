@@ -619,15 +619,15 @@ class Load_World:
 			Load_World.default_buttons["Info"].set_text("Worlds save directory not found!")
 
 		Load_World.pages = []
-		for i in range((len(Load_World.worlds) + 3) // 4):
+		for i in range((len(Load_World.worlds) + 3) // settings.worlds_per_page):
 			page = {}
-			pl = 4
-			if i == len(Load_World.worlds) // 4:
-				if len(Load_World.worlds) % 4 != 0:
-					pl = len(Load_World.worlds) % 4
-			for j in range(pl):
-				page[j] = Button((0, 0.4 - j * 0.3), Load_World.worlds[4 * i + j], False, False,
-				                 Load_World.gen_func(4 * i + j))
+			page_length = settings.worlds_per_page
+			if i == len(Load_World.worlds) // settings.worlds_per_page:
+				if len(Load_World.worlds) % settings.worlds_per_page != 0:
+					page_length = len(Load_World.worlds) % settings.worlds_per_page
+			for j in range(page_length):
+				page[j] = Button((0, 0.4 - j * 0.3), Load_World.worlds[settings.worlds_per_page * i + j], False, False,
+				                 Load_World.gen_func(settings.worlds_per_page * i + j))
 			Load_World.pages.append(Interface(page))
 		if len(Load_World.pages) == 0:
 			Load_World.pages.append(Interface({}))
@@ -641,13 +641,13 @@ class Load_World:
 	def gen_func(world):
 
 		def f():
-			for i in range((len(Load_World.worlds) + 3) // 4):
-				pl = 4
-				if i == len(Load_World.worlds) // 4:
-					if len(Load_World.worlds) % 4 != 0:
-						pl = len(Load_World.worlds) % 4
-				for j in range(pl):
-					if 4 * i + j != world:
+			for i in range(len(Load_World.pages)):
+				page_length = settings.worlds_per_page
+				if i == len(Load_World.worlds) // settings.worlds_per_page:
+					if len(Load_World.worlds) % settings.worlds_per_page != 0:
+						page_length = len(Load_World.worlds) % settings.worlds_per_page
+				for j in range(page_length):
+					if settings.worlds_per_page * i + j != world:
 						Load_World.pages[i][j].texture = Button_Box.type[0]
 						Load_World.pages[i][j].input_mode = False
 					else:
@@ -677,11 +677,11 @@ class Load_World:
 	default_buttons = Interface({
 	    "Title": Button((-0.5, 0.7), "Worlds", None, True),
 	    "Page": Button((0.5, 0.7), "Page 1", None, True),
-	    "Info": Button((0, -1.15), "", None),
-	    "Load": Button((0.5, -0.85), "Load World", False, True, run),
-	    "Back": Button((-0.5, -0.85), "Back", False, True, back),
-	    "Prev": Button((-1.5, -0.85), "Previous", False, True, prev_page),
-	    "Next": Button((1.5, -0.85), "Next", False, True, next_page)
+	    "Info": Button((0, 0.1 - settings.worlds_per_page * 0.3), "", None),
+	    "Load": Button((0.5, 0.4 - settings.worlds_per_page * 0.3), "Load World", False, True, run),
+	    "Back": Button((-0.5, 0.4 - settings.worlds_per_page * 0.3), "Back", False, True, back),
+	    "Prev": Button((-1.5, 0.4 - settings.worlds_per_page * 0.3), "Previous", False, True, prev_page),
+	    "Next": Button((1.5, 0.4 - settings.worlds_per_page * 0.3), "Next", False, True, next_page)
 	})
 	buttons = default_buttons
 	pages = []
@@ -816,7 +816,7 @@ class Settings:
 		# Button coordinates
 		y = -0.9
 		x = -0.5
-		cat_y = 0.4
+		cat_y = 0.6
 
 		# Main generation loop
 		for line in setlines:
