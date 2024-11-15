@@ -123,7 +123,17 @@ def gen_chunk(coords):
 	# Paste Trees into terrain:
 	for tree in trees:
 		dim = schematic["tree"][tree[3]][0].shape
-		if World.get_block(tree[:3]) not in [2, 3, 0]:
+		block_under_tree = World.get_block(tree[:3])
+		if block_under_tree == 0:
+			height = World.get_height(tree[[0, 2]])
+			if height < World.water_level:
+				continue
+			rock_const = ((60 / height)**2) - 0.1
+			neighbours = np.array((World.get_height(tree[[0, 2]] - (1, 0)), World.get_height(tree[[0, 2]] + (1, 0)),
+			              World.get_height(tree[[0, 2]] - (0, 1)), World.get_height(tree[[0, 2]] + (0, 1))))
+			if ((neighbours - height) > rock_const).any():
+				continue
+		elif block_under_tree not in [2, 3]:
 			continue
 		tree[[0, 2]] -= np.array(coords) * World.chunk_size
 		tree[:3] -= (dim[0] // 2, 0, dim[2] // 2)
