@@ -24,14 +24,15 @@ types = [
 	(np.float64, GL_DOUBLE, c_double, 8,          1)
 ]
 
-if settings.gpu_data_type == None:
-	size = max(settings.chunk_size, settings.world_height)
-	if size <= 256:
-		settings.gpu_data_type = BYTE
-	elif size <= 32895:
-		settings.gpu_data_type = SHORT
-	else:
-		settings.gpu_data_type = INT
+#if settings.gpu_data_type == None:
+#	size = max(settings.chunk_size, settings.world_height)
+#	if size <= 256:
+#		settings.gpu_data_type = BYTE
+#	elif size <= 32895:
+#		settings.gpu_data_type = SHORT
+#	else:
+#		settings.gpu_data_type = INT
+settings.gpu_data_type = FLOAT
 
 # Menu Options
 
@@ -411,7 +412,8 @@ def save_world(event):
 		filesize = savefile.tell()
 		for i, reg in enumerate(sorted_reg_table):
 			if reg not in World.regions:
-				raw_region_data[reg] = Load_World.load_region_raw(reg, sorted_reg_table[i + 1] if i + 1 < len(sorted_reg_table) else filesize)
+				next_reg = World.region_table[sorted_reg_table[i + 1]][0] if i + 1 < len(sorted_reg_table) else filesize
+				raw_region_data[reg] = Load_World.load_region_raw(reg, next_reg)
 
 		savefile.seek(0, 0)
 		savefile.truncate(0)
@@ -488,7 +490,7 @@ def save_world(event):
 
 		UI.buttons["Info"].set_text("World saved successfully!")
 	except Exception as e:
-		UI.buttons["Info"].set_text(f"Failed to save world: {e}")
+		UI.buttons["Info"].set_text(f"Failed to save world: {repr(e)}")
 	print(UI.buttons["Info"].get_text())
 
 
@@ -731,7 +733,7 @@ class Load_World:
 
 			UI.buttons["Info"].set_text("World loaded successfully!")
 		except Exception as e:
-			UI.buttons["Info"].set_text(f"Failed to load world: {e}")
+			UI.buttons["Info"].set_text(f"Failed to load world: {repr(e)}")
 			print("".join(traceback.format_exc()))
 		print(UI.buttons["Info"].get_text())
 
@@ -798,10 +800,10 @@ class Load_World:
 			region.gen_chunks[ch] = True
 
 
-	def load_region_raw(reg, next_reg):
+	def load_region_raw(reg, next_reg_location):
 		readfile = World.file
 		readfile.seek(World.region_table[reg][0])
-		region_buffer = readfile.read(World.region_table[next_reg][0] - World.region_table[reg][0])
+		region_buffer = readfile.read(next_reg_location - World.region_table[reg][0])
 		return (World.region_table[reg][1], region_buffer)
 
 
@@ -1149,6 +1151,28 @@ class Cube:
 	normals = np.array(((0, 0, 1), (0, 0, -1), (-1, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 0)))
 
 
+class Slab(Cube):
+	# Faces: front, back, right, left, top, bottom
+	vertices = np.array(((1, 0.5, 1), (1, 0.5, 0), (1, 0, 0), (1, 0, 1), (0, 0.5, 1), (0, 0, 0), (0, 0, 1), (0, 0.5, 0)))
+
+
+class Liquid(Cube):
+	# Faces: front, back, right, left, top, bottom
+	vertices = np.array(((1, 0.875, 1), (1, 0.875, 0), (1, 0, 0), (1, 0, 1), (0, 0.875, 1), (0, 0, 0), (0, 0, 1), (0, 0.875, 0)))
+
+
+class Layer(Cube):
+	# Faces: front, back, right, left, top, bottom
+	vertices = np.array(((1, 0.125, 1), (1, 0.125, 0), (1, 0, 0), (1, 0, 1), (0, 0.125, 1), (0, 0, 0), (0, 0, 1), (0, 0.125, 0)))
+
+
+models = [Cube, Liquid, Slab, Layer]
+block_models = np.array([0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3])
+non_solid = {0, 8, 18, 19}
+non_jumpable = {0, 18, 19}
+non_highlightable = {0, 8}
+
+
 def collision_check(pos, ds, dt):
 	def collide(i, pos, ds):
 		if i == 1:
@@ -1208,7 +1232,7 @@ class Player:
 				forward *= 0.707106781188
 				sideways *= 0.707106781188
 			accel[0] = forward * self.norm[0] + sideways * self.norm[2]
-			accel[1] = downward * settings.jump_height * (bool(block_under != 0) or self.flying or self.mv[1] == 0)
+			accel[1] = downward * settings.jump_height * (bool(block_under not in non_jumpable) or self.flying or self.mv[1] == 0)
 			accel[2] = forward * self.norm[2] - sideways * self.norm[0]
 			if self.flying:
 				accel *= (settings.flying_speed / settings.movement_speed)
@@ -1277,7 +1301,7 @@ class Player:
 		for x in range(x_min, x_max + 1):
 			for y in range(y_min, y_max + 1):
 				for z in range(z_min, z_max + 1):
-					if (block := World.get_block((x, y, z))) != 0 and block != 8:
+					if (World.get_block((x, y, z))) not in non_solid:
 						return True
 		return False
 
@@ -1431,7 +1455,7 @@ class World:
 	T_res = settings.T_res
 	HL_res = settings.HL_res
 	B_res = settings.B_res
-	G_res = settings.G_res		
+	G_res = settings.G_res
 	C_res = settings.C_res
 
 	tree_density_mean = settings.tree_density_mean
@@ -1586,6 +1610,9 @@ class World:
 		transp_normals = []
 		counter = 0
 		counter_transp = 0
+		blocks_model = block_models[blocks]
+		seethrough_copy = np.concatenate(([False], seethrough[1:]), 0)
+		
 		for i in range(6):
 			# Basically, for each of the 6 possible faces of all cubes, we filter out all those, whose neighbour is not air;
 			# the remainder we turn into vertex and texture data
@@ -1602,81 +1629,84 @@ class World:
 			coords_transp = World.coord_array[neighb_transp]
 			light_transp = light_neighb[neighb_transp]
 			biome_transp = chunk_biome[neighb_transp]
+			model_transp = blocks_model[neighb_transp]
 
-			solid_mask = ~seethrough[blocks_transp]
-			blocks_show = blocks_transp[solid_mask]  # Solid blocks
-			coords_show = coords_transp[solid_mask]
-			light_show = light_transp[solid_mask]
-			biome_show = biome_transp[solid_mask]
+			for j, model in enumerate(models):
+				model_mask = model_transp == j
 
-			seethrough_copy = np.concatenate(([False], seethrough[1:]), 0)
+				solid_mask = ~seethrough[blocks_transp] & model_mask
+				blocks_show = blocks_transp[solid_mask]  # Solid blocks
+				coords_show = coords_transp[solid_mask]
+				light_show = light_transp[solid_mask]
+				biome_show = biome_transp[solid_mask]
 
-			transp_mask = seethrough_copy[blocks] & (blocks != neighbours[i])
-			coords_show_transp = World.coord_array[transp_mask]
-			blocks_show_transp = blocks[transp_mask]
-			light_show_transp = light_neighb[transp_mask]
-			biome_show_transp = chunk_biome[transp_mask]
+				transp_mask = seethrough_copy[blocks] & (blocks != neighbours[i]) & (blocks_model == j)
+				transp_mask2 = (neighbours[i] == 8) & (blocks != neighbours[i]) & (blocks_model == block_models[8])
+				
+				coords_show_transp = World.coord_array[transp_mask]
+				blocks_show_transp = blocks[transp_mask]
+				light_show_transp = light_neighb[transp_mask]
+				biome_show_transp = chunk_biome[transp_mask]
 
-			transp_mask2 = (neighbours[i] == 8) & (blocks != neighbours[i])
-			coords_show_transp2 = World.coord_array[transp_mask2]
-			blocks_show_transp2 = neighbours[i][transp_mask2]
-			light_show_transp2 = light_neighb[transp_mask2]
-			biome_show_transp2 = chunk_biome[transp_mask2]
+				coords_show_transp2 = World.coord_array[transp_mask2]
+				blocks_show_transp2 = neighbours[i][transp_mask2]
+				light_show_transp2 = light_neighb[transp_mask2]
+				biome_show_transp2 = chunk_biome[transp_mask2]
+				
+				coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
+				blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
+				light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
+				biome_show_transp = np.concatenate((biome_show_transp, biome_show_transp2), 0)
 
-			coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
-			light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
-			blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
-			biome_show_transp = np.concatenate((biome_show_transp, biome_show_transp2), 0)
+				has_biometint = np.repeat(biometint[blocks_show][:, np.newaxis], 2, 1)
+				has_biometint_transp = np.repeat(biometint[blocks_show_transp][:, np.newaxis], 2, 1)
 
-			has_biometint = np.repeat(biometint[blocks_show][:, np.newaxis], 2, 1)
-			has_biometint_transp = np.repeat(biometint[blocks_show_transp][:, np.newaxis], 2, 1)
+				if len(coords_show) > 0:
+					c_show_r = np.repeat(coords_show, 6, 0)
+					cube_verts = np.tile(model.vertices[model.triangles[i]], (len(coords_show), 1))
 
-			if len(coords_show) > 0:
-				c_show_r = np.repeat(coords_show, 6, 0)
-				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(coords_show), 1))
+					verts.append(c_show_r + cube_verts - (128, 128, 128))
+					tex_verts.append(np.vstack(Textures.game_blocks[blocks_show, 6 * i:6 * i + 6]))
+					humtemp = World.get_hum_temp(biome_show, coords_show[:, 1])
+					biome_verts.append(np.vstack(np.repeat(
+						has_biometint * humtemp - 30000 * ~has_biometint * np.ones(humtemp.shape)
+					, 6, 0)))
+					normals.append(
+						np.tile(
+							types[settings.gpu_data_type][4] * model.normals[i], 
+							(6 * len(coords_show), 1)
+						) * np.tile(
+							np.repeat(
+								((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
+								(settings.shadow_brightness + 1), 6
+							), 
+							(3, 1)
+						).T
+					)
 
-				verts.append(c_show_r + cube_verts - (128, 128, 128))
-				tex_verts.append(np.vstack(Textures.game_blocks[blocks_show, 6 * i:6 * i + 6]))
-				humtemp = World.get_hum_temp(biome_show, coords_show[:, 1])
-				biome_verts.append(np.vstack(np.repeat(
-					has_biometint * humtemp - 30000 * ~has_biometint * np.ones(humtemp.shape)
-				, 6, 0)))
-				normals.append(
-				    np.tile(
-						types[settings.gpu_data_type][4] * Cube.normals[i], 
-						(6 * len(coords_show), 1)
-					) * np.tile(
-						np.repeat(
-							((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
-							(settings.shadow_brightness + 1), 6
-						), 
-						(3, 1)
-					).T
-				)
+					counter += len(coords_show) * 6
+				if len(coords_show_transp) > 0:
+					c_show_r = np.repeat(coords_show_transp, 6, 0)
+					cube_verts = np.tile(model.vertices[model.triangles[i]], (len(coords_show_transp), 1))
 
-				counter += len(coords_show) * 6
-			if len(coords_show_transp) > 0:
-				c_show_r = np.repeat(coords_show_transp, 6, 0)
-				cube_verts = np.tile(Cube.vertices[Cube.triangles[i]], (len(coords_show_transp), 1))
-
-				transp_verts.append(c_show_r + cube_verts - (128, 128, 128))
-				transp_tex_verts.append(np.vstack(Textures.game_blocks[blocks_show_transp, 6 * i:6 * i + 6]))
-				humtemp = World.get_hum_temp(biome_show_transp, coords_show_transp[:, 1])
-				transp_biome_verts.append(np.vstack(np.repeat(
-					has_biometint_transp * humtemp - 30000 * ~has_biometint_transp * np.ones(humtemp.shape),
-				 6, 0)))
-				transp_normals.append(
-					np.tile(
-						types[settings.gpu_data_type][4] * Cube.normals[i], 
-						(6 * len(coords_show_transp), 1)
-					) * np.tile(
-						np.repeat(
-							((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
-							(settings.shadow_brightness + 1), 6
-						), 
-						(3, 1)
-					).T
-				)
+					transp_verts.append(c_show_r + cube_verts - (128, 128, 128))
+					transp_tex_verts.append(np.vstack(Textures.game_blocks[blocks_show_transp, 6 * i:6 * i + 6]))
+					humtemp = World.get_hum_temp(biome_show_transp, coords_show_transp[:, 1])
+					transp_biome_verts.append(np.vstack(np.repeat(
+						has_biometint_transp * humtemp - 30000 * ~has_biometint_transp * np.ones(humtemp.shape),
+					 6, 0)))
+					transp_normals.append(
+						np.tile(
+							types[settings.gpu_data_type][4] * model.normals[i], 
+							(6 * len(coords_show_transp), 1)
+						) * np.tile(
+							np.repeat(
+								((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
+								(settings.shadow_brightness + 1), 6
+							), 
+							(3, 1)
+						).T
+					)
 
 				counter_transp += len(coords_show_transp) * 6
 		vert_tex_list = np.ravel(
@@ -1690,7 +1720,7 @@ class World:
 
 		if counter_transp != 0:
 			vert_tex_transp = np.ravel(
-			    np.column_stack((
+				np.column_stack((
 					np.vstack(transp_verts), 
 					np.vstack(transp_tex_verts),
 					np.vstack(transp_biome_verts),
@@ -2132,7 +2162,7 @@ def get_looked_at():
 	nm = np.array(-player.norm)
 	invnm = 1 / nm
 	while np.linalg.norm(r_pos - (player.pos + (0, player.height, 0))) <= settings.hand_reach:
-		if World.get_block(r_pos) not in [0, 8]:
+		if World.get_block(r_pos) not in non_highlightable:
 			return (r_pos, o_pos)
 		minim = rnd(np.array(r_pos), nm) * invnm
 		dt = float(min(minim[minim != 0]))

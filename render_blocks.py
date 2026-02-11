@@ -1,11 +1,12 @@
 from init import *
 
 def highlight_block(position):
+	model = models[block_models[World.get_block(position)]]
 	glBindTexture(GL_TEXTURE_2D, 0)
 	glColor3f(0.25, 0.25, 0.25)
 	glBegin(GL_LINES)
-	for i in Cube.edges:
-		for j in Cube.vertices[i]:
+	for i in model.edges:
+		for j in model.vertices[i]:
 			glVertex3fv((np.array((tuple(j * 1.0078125)) + position)))
 	glEnd()
 	glColor3f(1, 1, 1)

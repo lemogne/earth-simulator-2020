@@ -109,7 +109,7 @@ def gen_chunk(coords):
 	slope -= heightmap
 
 	# Rock constant for each block; determines, based on elevation, from which slope onwards stone is generated instead of grass
-	rockC = ((60 / heightmap)**2) - 0.1
+	rockC = (((45 + 40 * hummap[:, 1, :]) / heightmap)**2) - 0.1
 
 	# Map of where grass should be (x and z coordinates)
 	terrainmap = (slope[0] <= rockC) & (slope[1] <= rockC) & (slope[2] <= rockC) & (slope[3] <= rockC)
