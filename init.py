@@ -1145,32 +1145,50 @@ class Cube:
 	vertices = np.array(((1, 1, 1), (1, 1, 0), (1, 0, 0), (1, 0, 1), (0, 1, 1), (0, 0, 0), (0, 0, 1), (0, 1, 0)))
 	edges = np.array(((0, 1), (0, 3), (0, 4), (1, 2), (1, 7), (2, 5), (2, 3), (3, 6), (4, 6), (4, 7), (5, 6), (5, 7)))
 	quads = np.array(((5, 7, 1, 2), (3, 0, 4, 6), (2, 1, 0, 3), (6, 4, 7, 5), (7, 4, 0, 1), (5, 2, 3, 6)))
-	triangles = np.array(((5, 7, 1, 5, 1, 2), (3, 0, 4, 3, 4, 6), (2, 1, 0, 2, 0, 3), (6, 4, 7, 6, 7, 5),
-	                      (7, 4, 0, 7, 0, 1), (5, 2, 3, 5, 3, 6)))
+	triangles = (np.array((5, 7, 1, 5, 1, 2)), np.array((3, 0, 4, 3, 4, 6)), np.array((2, 1, 0, 2, 0, 3)), np.array((6, 4, 7, 6, 7, 5)),
+	             np.array((7, 4, 0, 7, 0, 1)), np.array((5, 2, 3, 5, 3, 6)), None)
 	sides = np.array(((1, 0), (1, 1), (0, 1), (1, 0), (0, 1), (0, 0)))
-	normals = np.array(((0, 0, 1), (0, 0, -1), (-1, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 0)))
+	normals = (np.array((0, 0, 1)), np.array((0, 0, -1)), np.array((-1, 0, 0)), np.array((1, 0, 0)), np.array((0, 1, 0)), np.array((0, -1, 0)), None)
+	is_side_full = np.array((True, True, True, True, True, True))
 
 
 class Slab(Cube):
 	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 0.5, 1), (1, 0.5, 0), (1, 0, 0), (1, 0, 1), (0, 0.5, 1), (0, 0, 0), (0, 0, 1), (0, 0.5, 0)))
+	triangles = (np.array((5, 7, 1, 5, 1, 2)), np.array((3, 0, 4, 3, 4, 6)), np.array((2, 1, 0, 2, 0, 3)), np.array((6, 4, 7, 6, 7, 5)),
+	             None, np.array((5, 2, 3, 5, 3, 6)), np.array((7, 4, 0, 7, 0, 1)))
+	normals = (np.array((0, 0, 1)), np.array((0, 0, -1)), np.array((-1, 0, 0)), np.array((1, 0, 0)), None, np.array((0, -1, 0)), np.array((0, 1, 0)))
+	is_side_full = np.array((False, False, False, False, True, False))
 
 
 class Liquid(Cube):
 	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 0.875, 1), (1, 0.875, 0), (1, 0, 0), (1, 0, 1), (0, 0.875, 1), (0, 0, 0), (0, 0, 1), (0, 0.875, 0)))
+	is_side_full = np.array((False, False, False, False, True, False))
 
 
-class Layer(Cube):
+class Ice(Liquid):
+	# Faces: front, back, right, left, top, bottom
+	vertices = np.array(((1, 0.9375, 1), (1, 0.9375, 0), (1, 0, 0), (1, 0, 1), (0, 0.9375, 1), (0, 0, 0), (0, 0, 1), (0, 0.9375, 0)))
+	is_side_full = np.array((False, False, False, False, True, False))
+
+
+class Layer(Slab):
 	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 0.125, 1), (1, 0.125, 0), (1, 0, 0), (1, 0, 1), (0, 0.125, 1), (0, 0, 0), (0, 0, 1), (0, 0.125, 0)))
 
 
-models = [Cube, Liquid, Slab, Layer]
-block_models = np.array([0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3])
+class Air(Cube):
+	# Faces: front, back, right, left, top, bottom
+	vertices = np.array(((1, 1, 1), (1, 1, 0), (1, -0.125, 0), (1, -0.125, 1), (0, 1, 1), (0, -0.125, 0), (0, -0.125, 1), (0, 1, 0)))
+
+
+models = [Cube, Liquid, Slab, Layer, Ice, Air]
+block_models = np.array([5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 3])
 non_solid = {0, 8, 18, 19}
 non_jumpable = {0, 18, 19}
 non_highlightable = {0, 8}
+side_full_array = np.array([model.is_side_full for model in models])
 
 
 def collision_check(pos, ds, dt):
@@ -1613,25 +1631,36 @@ class World:
 		blocks_model = block_models[blocks]
 		seethrough_copy = np.concatenate(([False], seethrough[1:]), 0)
 		
-		for i in range(6):
+		for i in range(7):
 			# Basically, for each of the 6 possible faces of all cubes, we filter out all those, whose neighbour is not air;
 			# the remainder we turn into vertex and texture data
-			neighbours[i] = np.vstack(neighbours[i]).astype(int)
-			light_neighb = np.vstack(
-				np.reshape(
-					np.tile(neighbours_light[i], World.height), 
-					(World.chunk_size, World.height, World.chunk_size)
+			if i < 6:
+				neighbours[i] = np.vstack(neighbours[i]).astype(int)
+				light_neighb = np.vstack(
+					np.reshape(
+						np.tile(neighbours_light[i], World.height), 
+						(World.chunk_size, World.height, World.chunk_size)
+					)
 				)
-			)
-			neighb_transp = seethrough[neighbours[i]]
 
-			blocks_transp = blocks[neighb_transp]
-			coords_transp = World.coord_array[neighb_transp]
-			light_transp = light_neighb[neighb_transp]
-			biome_transp = chunk_biome[neighb_transp]
-			model_transp = blocks_model[neighb_transp]
+				neighb_transp = seethrough[neighbours[i]] | ~side_full_array[block_models[neighbours[i]], i]
+
+				blocks_transp = blocks[neighb_transp]
+				coords_transp = World.coord_array[neighb_transp]
+				light_transp = light_neighb[neighb_transp]
+				biome_transp = chunk_biome[neighb_transp]
+				model_transp = blocks_model[neighb_transp]
+			else:
+				blocks_transp = blocks
+				coords_transp = World.coord_array
+				light_transp = light_neighb
+				biome_transp = chunk_biome
+				model_transp = blocks_model
 
 			for j, model in enumerate(models):
+				if model.triangles[i] is None:
+					continue
+				
 				model_mask = model_transp == j
 
 				solid_mask = ~seethrough[blocks_transp] & model_mask
@@ -1640,23 +1669,32 @@ class World:
 				light_show = light_transp[solid_mask]
 				biome_show = biome_transp[solid_mask]
 
-				transp_mask = seethrough_copy[blocks] & (blocks != neighbours[i]) & (blocks_model == j)
-				transp_mask2 = (neighbours[i] == 8) & (blocks != neighbours[i]) & (blocks_model == block_models[8])
-				
-				coords_show_transp = World.coord_array[transp_mask]
-				blocks_show_transp = blocks[transp_mask]
-				light_show_transp = light_neighb[transp_mask]
-				biome_show_transp = chunk_biome[transp_mask]
+				if i < 6:
+					transp_mask = seethrough_copy[blocks] & (blocks != neighbours[i]) & (blocks_model == j)
+					
+					coords_show_transp = World.coord_array[transp_mask]
+					blocks_show_transp = blocks[transp_mask]
+					light_show_transp = light_neighb[transp_mask]
+					biome_show_transp = chunk_biome[transp_mask]
 
-				coords_show_transp2 = World.coord_array[transp_mask2]
-				blocks_show_transp2 = neighbours[i][transp_mask2]
-				light_show_transp2 = light_neighb[transp_mask2]
-				biome_show_transp2 = chunk_biome[transp_mask2]
-				
-				coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
-				blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
-				light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
-				biome_show_transp = np.concatenate((biome_show_transp, biome_show_transp2), 0)
+					transp_mask2 = (neighbours[i] == 8) & (blocks == 0) 
+					
+					coords_show_transp2 = World.coord_array[transp_mask2]
+					blocks_show_transp2 = neighbours[i][transp_mask2]
+					light_show_transp2 = light_neighb[transp_mask2]
+					biome_show_transp2 = chunk_biome[transp_mask2]
+					
+					coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
+					blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
+					light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
+					biome_show_transp = np.concatenate((biome_show_transp, biome_show_transp2), 0)
+				else:
+					transp_mask = seethrough_copy[blocks] & (blocks_model == j)
+					
+					coords_show_transp = World.coord_array[transp_mask]
+					blocks_show_transp = blocks[transp_mask]
+					light_show_transp = light_neighb[transp_mask]
+					biome_show_transp = chunk_biome[transp_mask]
 
 				has_biometint = np.repeat(biometint[blocks_show][:, np.newaxis], 2, 1)
 				has_biometint_transp = np.repeat(biometint[blocks_show_transp][:, np.newaxis], 2, 1)
@@ -2013,22 +2051,25 @@ class Textures:
 		Textures.mapsize = np.array(Textures.mapsize_big) / 16
 		Textures.game_blocks = Textures.generate(game_blocks)
 
+
 	def update_pixel_size():
 		Textures.pixel_size = 2 * Textures.text[1].get_height() / (Display.size[1] * Textures.texttable_height)
 
+
 	def generate(blocks):
 		Face = np.array([
-			[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1], [0, 1, 1, 1, 2, 2], 
-			[0, 1, 1, 1, 2, 3], [0, 1, 2, 2, 3, 4], [0, 1, 2, 3, 4, 5]
+			[0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1, 1], [0, 1, 1, 1, 2, 2, 2], 
+			[0, 1, 1, 1, 2, 3, 2], [0, 1, 2, 2, 3, 4, 3], [0, 1, 2, 3, 4, 5, 4]
 		])
 		tex_array = []
 		for block in blocks:
-			cube_sides = np.tile(Cube.sides, (6, 1))
+			cube_sides = np.tile(Cube.sides, (7, 1))
 			tiles = np.array(block)[Face[len(block) - 1]]
 			block_textures = np.repeat(
 			    np.array([tiles % Textures.mapsize[0], -(tiles + 1) // Textures.mapsize[0]]).T, 6, 0)
 			tex_array.append(cube_sides + block_textures)
 		return np.array(tex_array)
+
 
 	def load(file, filter = GL_NEAREST, clamping = GL_REPEAT):
 		texture_surface = pg.image.load(f"textures/{settings.texture_pack}/{file}")
@@ -2049,6 +2090,7 @@ class Textures:
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter)
 		return (texid, texture_surface)
 
+
 class Sky:
 	triangles = (
 		(2, 0, 5), (0, 3, 5), (1, 2, 5), (3, 1, 5),
@@ -2063,6 +2105,7 @@ class Sky:
 	vert_list = np.array(vertices)[np.array(triangles).ravel()]
 	normals = np.zeros(len(vert_list))
 
+
 	def init():
 		t = 0.05
 		b = 0.95
@@ -2073,9 +2116,11 @@ class Sky:
 			[(0, b), (0, m), (0, b), (0, b), (0, m), (0, m)] * 4
 		)
 
+
 	def get_tex():
 		tempS = Sky.texture_offset(World.game_time)
 		return Sky.tex_list + (tempS, 0)
+
 
 	def texture_offset(time):
 		hardness = 2
