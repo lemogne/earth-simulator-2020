@@ -1150,6 +1150,7 @@ class Cube:
 	sides = np.array(((1, 0), (1, 1), (0, 1), (1, 0), (0, 1), (0, 0)))
 	normals = (np.array((0, 0, 1)), np.array((0, 0, -1)), np.array((-1, 0, 0)), np.array((1, 0, 0)), np.array((0, 1, 0)), np.array((0, -1, 0)), None)
 	is_side_full = np.array((True, True, True, True, True, True))
+	hitbox = np.array(((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)))
 
 
 class Slab(Cube):
@@ -1159,49 +1160,71 @@ class Slab(Cube):
 	             None, np.array((5, 2, 3, 5, 3, 6)), np.array((7, 4, 0, 7, 0, 1)))
 	normals = (np.array((0, 0, 1)), np.array((0, 0, -1)), np.array((-1, 0, 0)), np.array((1, 0, 0)), None, np.array((0, -1, 0)), np.array((0, 1, 0)))
 	is_side_full = np.array((False, False, False, False, True, False))
+	hitbox = np.array(((0.0, 0.0, 0.0), (1.0, 0.5, 1.0)))
 
 
 class Liquid(Cube):
 	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 0.875, 1), (1, 0.875, 0), (1, 0, 0), (1, 0, 1), (0, 0.875, 1), (0, 0, 0), (0, 0, 1), (0, 0.875, 0)))
 	is_side_full = np.array((False, False, False, False, True, False))
+	hitbox = np.array(((0.0, 0.0, 0.0), (1.0, 0.875, 1.0)))
 
 
 class Ice(Liquid):
 	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 0.9375, 1), (1, 0.9375, 0), (1, 0, 0), (1, 0, 1), (0, 0.9375, 1), (0, 0, 0), (0, 0, 1), (0, 0.9375, 0)))
 	is_side_full = np.array((False, False, False, False, True, False))
+	hitbox = np.array(((0.0, 0.0, 0.0), (1.0, 0.9375, 1.0)))
 
 
 class Layer(Slab):
 	# Faces: front, back, right, left, top, bottom
 	vertices = np.array(((1, 0.125, 1), (1, 0.125, 0), (1, 0, 0), (1, 0, 1), (0, 0.125, 1), (0, 0, 0), (0, 0, 1), (0, 0.125, 0)))
+	hitbox = np.array(((0.0, 0.0, 0.0), (1.0, 0.125, 1.0)))
 
 
 class Air(Cube):
 	# Faces: front, back, right, left, top, bottom
-	vertices = np.array(((1, 1, 1), (1, 1, 0), (1, -0.125, 0), (1, -0.125, 1), (0, 1, 1), (0, -0.125, 0), (0, -0.125, 1), (0, 1, 0)))
+	#vertices = np.array(((1, 0.875, 1), (1, 0.875, 0), (1, -0.125, 0), (1, -0.125, 1), (0, 0.875, 1), (0, -0.125, 0), (0, -0.125, 1), (0, 0.875, 0)))
+	triangles = (None, None, None, None, None, None, None)
 
 
-models = [Cube, Liquid, Slab, Layer, Ice, Air]
-block_models = np.array([5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 3])
+class Shrub(Cube):
+	vertices = np.array(((1, 1, 1), (1, 1, 0), (1, 0, 0), (1, 0, 1), (0, 1, 1), (0, 0, 0), (0, 0, 1), (0, 1, 0)))
+	triangles = (np.array((6, 4, 1, 6, 1, 2)), np.array((2, 1, 4, 2, 4, 6)), np.array((5, 7, 0, 5, 0, 3)), np.array((3, 0, 7, 3, 7, 5)), None, None, None)
+	normals = (np.array((1, 0, -1)) / (0.5 ** 0.5), np.array((-1, 0, 1)) / (0.5 ** 0.5), np.array((-1, 0, 1)) * (0.5 ** 0.5), np.array((1, 0, -1)) / (0.5 ** 0.5), None, None, None)
+	is_side_full = np.array((False, False, False, False, False, False))
+
+
+def in_hitbox(r_pos, hitbox):
+	b_pos = r_pos // 1
+	return (r_pos >= b_pos + hitbox[0]).all() and (r_pos <= b_pos + hitbox[1]).all()
+
+
+
+models = [Cube, Liquid, Slab, Layer, Ice, Air, Shrub]
+block_models = np.array([5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 6, 3, 2])
 non_solid = {0, 8, 18, 19}
 non_jumpable = {0, 18, 19}
 non_highlightable = {0, 8}
+translucent = [0, 19]	# Must be list because of np.isin
 side_full_array = np.array([model.is_side_full for model in models])
 
 
 def collision_check(pos, ds, dt):
-	def collide(i, pos, ds):
+	def collide(i, pos, ds, hitbox):
 		if i == 1:
 			offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
 		else:
 			offset = settings.player_width
+			
 		offset += settings.hitbox_epsilon
+		
 		if ds[i] < 0:
-			pos[i] = math.ceil(pos[i]) - offset
+			pos[i] = math.floor(pos[i] - ds[i] * dt + offset) + hitbox[0, i] - offset
 		elif ds[i] > 0:
-			pos[i] = math.floor(pos[i]) + offset
+			pos[i] = math.floor(pos[i] - ds[i] * dt - offset) + hitbox[1, i] + offset
+			
 		ds[i] = 0
 
 	# Check for block collisions
@@ -1209,12 +1232,13 @@ def collision_check(pos, ds, dt):
 	for _ in range(segments):
 		# Basic check in each dimension separately
 		for i in range(3):
-			if player.check_in_block(i, dt / segments, ds, pos):
-				collide(i, pos, ds)
+			if (hitbox := player.check_in_block(i, dt / segments, ds, pos)) is not None:
+				collide(i, pos, ds, hitbox)
 
 		# Edge cases
-		while player.check_in_block(-1, dt / segments, ds, pos) and ds.any():
-			collide(abs(ds).argmax(), pos, ds)
+		while (hitbox := player.check_in_block(-1, dt / segments, ds, pos)) is not None and ds.any():
+			collide(abs(ds).argmax(), pos, ds, hitbox)
+		
 		pos -= ds * dt / segments
 
 
@@ -1231,27 +1255,34 @@ class Player:
 	# Used in the rendering engine to prevent sudden 'snapping' when mv = 0
 	old_pos = pos
 
+
 	def init(self):
 		self.chunkpos = self.pos // settings.chunk_size
 		self.height = settings.player_height
 		self.flying = settings.flying
 
+
 	def do_tick(self, dt):
 		if not (UI.paused or UI.buttons.is_typing()):
 			self.old_pos = self.pos + (0, 0, 0)
 			block_under = World.get_block(self.pos - (0, 0.01, 0))
+			hitbox_block = models[block_models[block_under]].hitbox
+			
 			# Calculate movement vector based on key presses and environment
 			keystates = pg.key.get_pressed()
 			accel = np.array((0.0, 0.0, 0.0))
 			forward = (keystates[pg.K_w] - keystates[pg.K_s])
 			sideways = (keystates[pg.K_a] - keystates[pg.K_d])
 			downward = (keystates[pg.K_LSHIFT] - keystates[pg.K_SPACE])
+			
 			if forward and sideways:
 				forward *= 0.707106781188
 				sideways *= 0.707106781188
+				
 			accel[0] = forward * self.norm[0] + sideways * self.norm[2]
-			accel[1] = downward * settings.jump_height * (bool(block_under not in non_jumpable) or self.flying or self.mv[1] == 0)
+			accel[1] = downward * settings.jump_height * ((block_under not in non_jumpable) and in_hitbox(self.pos - (0, 0.01, 0), hitbox_block) or self.flying or self.mv[1] == 0)
 			accel[2] = forward * self.norm[2] - sideways * self.norm[0]
+			
 			if self.flying:
 				accel *= (settings.flying_speed / settings.movement_speed)
 				self.mv[1] = 0
@@ -1278,12 +1309,17 @@ class Player:
 			# MOVEMENT
 			self.chunkpos = self.pos // World.chunk_size
 
-	def not_in_hitbox(self, block):
+
+	def not_in_hitbox(self, block, hitbox_min = None, hitbox_max = None):
 		"""Checks if block at given location is not in hitbox of player."""
-		hitbox_min = self.pos - (settings.player_width, 0, settings.player_width)
-		hitbox_max = self.pos + (settings.player_width, settings.player_height, settings.player_width)
-		block_min = np.floor(block)
-		block_max = block_min + 1
+		if hitbox_min is None:
+			hitbox_min = self.pos - (settings.player_width, 0, settings.player_width)
+		if hitbox_max is None:
+			hitbox_max = self.pos + (settings.player_width, settings.player_height, settings.player_width)
+		
+		hitbox_block = models[block_models[World.get_block(block)]].hitbox
+		block_min = np.floor(block) + hitbox_block[0]
+		block_max = block_min + hitbox_block[1]
 
 		return ((hitbox_max < block_min) | (block_max < hitbox_min)).any()
 
@@ -1319,9 +1355,12 @@ class Player:
 		for x in range(x_min, x_max + 1):
 			for y in range(y_min, y_max + 1):
 				for z in range(z_min, z_max + 1):
-					if (World.get_block((x, y, z))) not in non_solid:
-						return True
-		return False
+					block = World.get_block((x, y, z))
+					if block not in non_solid \
+						and not self.not_in_hitbox((x, y, z), hitbox_min, hitbox_max):
+						return models[block_models[block]].hitbox
+		return None
+
 
 	def rotate(self, mouse_pos):
 		if not (UI.paused or UI.buttons.is_typing()):
@@ -1351,6 +1390,7 @@ class Player:
 player = Player()
 player.init()
 
+
 class Region:
 	preloaded_chunks = {}
 	loaded_chunks = {}
@@ -1364,6 +1404,7 @@ class Region:
 	in_view = None
 	chunk_y_lims = None
 	gen_chunks = None
+
 
 	def __init__(self, pos):
 		self.preloaded_chunks = dict()
@@ -1387,11 +1428,13 @@ class Region:
 			if self.preloaded_chunks[ch][1] != None:
 				glDeleteBuffers(1, int(self.preloaded_chunks[ch][1][0]))
 
+
 	def unload_vram(self):
 		self.__del__()
 		self.preloaded_chunks = dict()
 		self.loaded_chunks = dict()
 		self.preloaded_data = dict()
+
 
 	def load_chunks(self, change_pos, change_rot, force_load=False):
 		reg_pos = tuple(self.pos // World.region_size)
@@ -1452,12 +1495,14 @@ class Region:
 				return y / World.chunk_size
 		return World.height
 
+
 	def thorough_chmax(self, ch):
 		for y in range(World.height - 1, -1, -1):
 			if seethrough[self.chunks[ch][:, y, :]].any():
 				chmin = self.chunk_min_max[ch][0]
 				return (y / World.chunk_size) - chmin
 		return 0
+
 
 class World:
 	seed = 0
@@ -1700,7 +1745,8 @@ class World:
 				has_biometint_transp = np.repeat(biometint[blocks_show_transp][:, np.newaxis], 2, 1)
 
 				if len(coords_show) > 0:
-					c_show_r = np.repeat(coords_show, 6, 0)
+					n = len(model.vertices[model.triangles[i]])
+					c_show_r = np.repeat(coords_show, n, 0)
 					cube_verts = np.tile(model.vertices[model.triangles[i]], (len(coords_show), 1))
 
 					verts.append(c_show_r + cube_verts - (128, 128, 128))
@@ -1708,23 +1754,26 @@ class World:
 					humtemp = World.get_hum_temp(biome_show, coords_show[:, 1])
 					biome_verts.append(np.vstack(np.repeat(
 						has_biometint * humtemp - 30000 * ~has_biometint * np.ones(humtemp.shape)
-					, 6, 0)))
+					, n, 0)))
 					normals.append(
 						np.tile(
 							types[settings.gpu_data_type][4] * model.normals[i], 
-							(6 * len(coords_show), 1)
+							(n * len(coords_show), 1)
 						) * np.tile(
 							np.repeat(
 								((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
-								(settings.shadow_brightness + 1), 6
+								(settings.shadow_brightness + 1), n
 							), 
 							(3, 1)
 						).T
 					)
 
-					counter += len(coords_show) * 6
+					counter += len(coords_show) * n
+					
+				
 				if len(coords_show_transp) > 0:
-					c_show_r = np.repeat(coords_show_transp, 6, 0)
+					n = len(model.vertices[model.triangles[i]])
+					c_show_r = np.repeat(coords_show_transp, n, 0)
 					cube_verts = np.tile(model.vertices[model.triangles[i]], (len(coords_show_transp), 1))
 
 					transp_verts.append(c_show_r + cube_verts - (128, 128, 128))
@@ -1732,21 +1781,22 @@ class World:
 					humtemp = World.get_hum_temp(biome_show_transp, coords_show_transp[:, 1])
 					transp_biome_verts.append(np.vstack(np.repeat(
 						has_biometint_transp * humtemp - 30000 * ~has_biometint_transp * np.ones(humtemp.shape),
-					 6, 0)))
+					 n, 0)))
 					transp_normals.append(
 						np.tile(
 							types[settings.gpu_data_type][4] * model.normals[i], 
-							(6 * len(coords_show_transp), 1)
+							(n * len(coords_show_transp), 1)
 						) * np.tile(
 							np.repeat(
 								((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
-								(settings.shadow_brightness + 1), 6
+								(settings.shadow_brightness + 1), n
 							), 
 							(3, 1)
 						).T
 					)
 
-				counter_transp += len(coords_show_transp) * 6
+					counter_transp += len(coords_show_transp) * n
+					
 		vert_tex_list = np.ravel(
 			np.column_stack((
 				np.vstack(verts), 
@@ -1894,15 +1944,15 @@ class World:
 
 		current_light = math.floor(region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
 		    coords[2] % World.chunk_size)])
-		if block == 0 and World.get_block(coords) != 0 and math.floor(coords[1]) == current_light:
+		if block in translucent and World.get_block(coords) != 0 and math.floor(coords[1]) == current_light:
 			h = math.floor(coords[1]) - 1
-			while World.get_block((coords[0], h, coords[2])) == 0:
+			while World.get_block((coords[0], h, coords[2])) in translucent:
 				if h < 0:
 					break
 				h -= 1
 			else:
 				region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)] = h
-		elif block != 0 and coords[1] > current_light:
+		elif block not in translucent and coords[1] > current_light:
 			region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
 			                                                                     World.chunk_size)] = coords[1]
 		region.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
@@ -2185,9 +2235,10 @@ def compute_lighting(blocks):
 	not_found = np.full((blocks.shape[0], blocks.shape[2]), True)
 	light = np.full((blocks.shape[0], blocks.shape[2]), blocks.shape[1])
 	for y in range(blocks.shape[1] - 1, -1, -1):
-		not_found &= blocks[:, y, :] == 0
+		not_found &= np.isin(blocks[:, y, :], translucent)
 		light[not_found] = y - 1
 	return light
+
 
 def get_schematic(file):
 	raw_json = open(f"schematics/{settings.schematic_pack}/{file}.json").read()
@@ -2197,22 +2248,32 @@ def get_schematic(file):
 
 
 def get_looked_at():
-
 	def rnd(p, dx):
 		return (dx < 0) * np.floor(p) - (dx > 0) * np.floor(-p) - p
+		
 
 	r_pos = player.pos + (0, player.height, 0)
 	o_pos = r_pos
 	dt = 0
 	nm = np.array(-player.norm)
 	invnm = 1 / nm
+	
 	while np.linalg.norm(r_pos - (player.pos + (0, player.height, 0))) <= settings.hand_reach:
-		if World.get_block(r_pos) not in non_highlightable:
-			return (r_pos, o_pos)
-		minim = rnd(np.array(r_pos), nm) * invnm
+		block = World.get_block(r_pos)
+		
+		if block not in non_highlightable:
+			hitbox = models[block_models[block]].hitbox
+			if in_hitbox(r_pos, hitbox):
+				return (r_pos, o_pos)
+			
+			minim = rnd((r_pos - hitbox[0]) / (hitbox[1] - hitbox[0]), nm / (hitbox[1] - hitbox[0])) * invnm
+			minim = (minim * (hitbox[1] - hitbox[0])) + hitbox[0]
+		else:
+			minim = rnd(r_pos, nm) * invnm
 		dt = float(min(minim[minim != 0]))
 		o_pos = r_pos + (0, 0, 0)
 		r_pos -= dt * 1.1 * player.norm
+
 	return (None, None)
 
 

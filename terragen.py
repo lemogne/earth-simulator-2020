@@ -123,19 +123,22 @@ def gen_chunk(coords):
 		block_map = heights <= heightmap
 	water_map = (heights > heightmap) & (heights <= World.water_level)
 	surface_map = heights == heightmap_int
+	above_surface_map = (heights == heightmap_int + 1) & (heights > World.water_level)
 	grass_map = surface_map & (heights > World.water_level + 1) & terrainmap
 	desert_map = (hummap[:, 0, :] < 0.33) & (hummap[:, 1, :] > 0.67)
 	terrain_depth = 6 * hummap[:, 1, :]
 	cold_map = (hummap[:, 1, :] < 0.2)
-	snow_map = grass_map & cold_map
-	grass_map &= ~desert_map & ~cold_map
+	very_cold_map = (hummap[:, 1, :] < 0.1)
+	snow_map = above_surface_map & cold_map
+	deep_snow_map = surface_map & (heights > World.water_level + 1) & very_cold_map
+	grass_map &= ~desert_map & ~deep_snow_map
 	ice_map = water_map & (heights == World.water_level) & cold_map
 	water_map &= ~ice_map
 	sand_map = surface_map & ((heights < World.water_level + 2) | desert_map)
 	dirt_map = block_map & (heights > (heightmap - terrain_depth)) & ~surface_map & terrainmap
 	sand_map |= dirt_map & desert_map
 	dirt_map &= ~desert_map
-	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map & ~snow_map
+	stone_map = block_map & ~grass_map & ~sand_map & ~dirt_map & ~deep_snow_map
 
 	# Actually generate chunks and calculate lighting
 	chmin = np.min(heightmap_int) / World.chunk_size
@@ -146,7 +149,8 @@ def gen_chunk(coords):
 	  +  9 * sand_map \
 	  +  3 * dirt_map \
 	  +  1 * stone_map \
-	  + 13 * snow_map \
+	  + 19 * snow_map \
+	  + 13 * deep_snow_map \
 	  + 14 * ice_map
 	).astype(np.uint8).transpose(1, 0, 2)
 	region.light[ch] = ((heightmap_int > World.water_level) * heightmap_int + (heightmap_int < World.water_level) * World.water_level)
