@@ -96,6 +96,7 @@ except Exception:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 		print_error(message)
 		while True:
+			time.sleep(0.5)
 			for event in pg.event.get():
 				if event.type == pg.QUIT:
 					pg.quit()

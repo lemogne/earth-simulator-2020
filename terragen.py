@@ -81,7 +81,7 @@ def gen_heightmaps(coord_list):
 		World.heightmap[t_coords] = heightmap
 
 		World.gen_biomemap(t_coords, x, z)
-		
+
 
 def gen_chunk(coords):
 	gen_heightmaps(np.mgrid[-1:2, -1:2].T.reshape((9, 2)) + coords)
@@ -109,7 +109,7 @@ def gen_chunk(coords):
 	slope -= heightmap
 
 	# Rock constant for each block; determines, based on elevation, from which slope onwards stone is generated instead of grass
-	rockC = (((45 + 40 * hummap[:, 1, :]) / heightmap)**2) - 0.1
+	rockC = (((settings.rock_base + settings.rock_biome_mult * hummap[:, 1, :]) / heightmap) ** 2) - settings.rock_offset
 
 	# Map of where grass should be (x and z coordinates)
 	terrainmap = (slope[0] <= rockC) & (slope[1] <= rockC) & (slope[2] <= rockC) & (slope[3] <= rockC)
@@ -167,17 +167,27 @@ def gen_chunk(coords):
 		schem = schemtype[int(tree[3] / 4294967295 * len(schemtype))]
 		dim = schem[0].shape
 		block_under_tree = World.get_block(tree[:3])
+		
 		if block_under_tree in [3, 13, 9]:
 			height = World.get_height(tree[[0, 2]])
+			
 			if height < World.water_level + 2:
 				continue
-			rock_const = ((60 / height)**2) - 0.1
-			neighbours = np.array((World.get_height(tree[[0, 2]] - (1, 0)), World.get_height(tree[[0, 2]] + (1, 0)),
-			              World.get_height(tree[[0, 2]] - (0, 1)), World.get_height(tree[[0, 2]] + (0, 1))))
+			
+			rock_const = rockC[*(tree[[0, 2]] % settings.chunk_size)]
+			neighbours = np.array((
+				World.get_height(tree[[0, 2]] - (1, 0)),
+				World.get_height(tree[[0, 2]] + (1, 0)),
+				World.get_height(tree[[0, 2]] - (0, 1)),
+				World.get_height(tree[[0, 2]] + (0, 1))
+			))
+			
 			if ((neighbours - height) > rock_const).any():
 				continue
+			
 		elif block_under_tree != 2:
 			continue
+		
 		tree[[0, 2]] -= np.array(coords) * World.chunk_size
 		tree[:3] -= schem[2]
 		min_x = max(-tree[0], 0)
@@ -219,32 +229,44 @@ def gen_terrain():
 	player.pos = np.array((x - 0.5, World.heightmap[(chunk_x, chunk_x)][0, 0] + 2, x - 0.5))
 	player.chunkpos = player.pos // settings.chunk_size
 
+
 def gen_region(reg):
 	World.regions[reg] = Region(reg)
 	x = reg[0] * World.region_size
 	y = reg[1] * World.region_size
+	
 	for i in range(x, x + World.region_size):
 		for j in range(y, y + World.region_size):
 			gen_chunk((i, j))
 			pg.event.get()
 
+
 def gen_chunks():
-	while (ch := World.chunks_to_generate.pop(0) if len(World.chunks_to_generate) > 0 else None):
+	while (World.chunks_to_generate or World.regions_to_load):
 		while settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
+			#print("idle gen")
 			if UI.in_menu:
 				return
-			time.sleep(0.1)
+			time.sleep(0.05)
+		
 		if World.regions_to_load:
-			Load_World.load_region(World.regions_to_load[0])
-			World.regions_to_load.pop(0)
-		else:
+			reg = World.regions_to_load.pop(0)
+			Load_World.load_region(reg)
+			#print("load", reg)
+		
+		if World.chunks_to_generate:
+			ch = World.chunks_to_generate.pop(0)
 			gen_chunk(ch)
+			#print("gen", ch)
+
 
 def gen_chunk_thread():
 	try:
 		while not UI.in_menu:
 			gen_chunks()
-			time.sleep(1)
+			time.sleep(0.05)
 	except Exception as e:
 		World.thread_exception = e
 		print("".join(traceback.format_exc()))
+
+

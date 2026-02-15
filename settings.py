@@ -18,16 +18,19 @@ tree_density_mean = 1 / 64
 tree_density_var = 1.1
 tree_res = (16, 16)
 water_level = 46
+rock_base = 70
+rock_biome_mult = 40
+rock_offset = 0.1
 
 #GRAPHICS
-render_distance = 10
+render_distance = 15
 ticks_per_second = 15
 max_FPS = 60
-min_FPS = -1
+min_FPS = 30
 nominal_res = (1205, 720)
 fullscreen = False
 fov_Y = 60
-frame_cap = False
+frame_cap = True
 texture_pack = "default"
 shader_pack = "default"
 schematic_pack = "default"

@@ -36,8 +36,10 @@ while 1:
 
 		if not settings.frame_cap or settings.max_FPS * (now - Time.last_frame) >= 1:
 			temp_pos = player.pos + (0,0,0)
+			
 			if not UI.paused:
 				delta_t = now - Time.last_tick
+				
 				if delta_t < 0:
 					ds = settings.ticks_per_second * (player.old_pos - player.pos)
 				else:
@@ -61,8 +63,10 @@ while 1:
 		while Time.last_tick < now:
 			player.do_tick(1 / settings.ticks_per_second)
 			Time.last_tick += 1 / settings.ticks_per_second
+			
 			if UI.show_game_info:
 				looked_at_coords = get_looked_at()[0]
+				
 				if looked_at_coords is not None:
 					lookedAt_str = str(looked_at_coords // 1)[1:-1]
 				else:
@@ -72,6 +76,7 @@ while 1:
 					f"FPS:\t\t{Time.prev_frames}\n"\
 					f"Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})\n"\
 					f"World Seed:\t{World.seed}\n"\
+					f"Biome:\t{World.get_biome(player.pos)}\n"\
 					f"Game Time:\t{round(World.game_time)}"
 
 		# Resets frame count
@@ -82,6 +87,7 @@ while 1:
 
 		if UI.paused:
 			UI.check_hover(mouse_pos)
+		
 		for event in pg.event.get():
 			if UI.buttons.is_typing():
 				if UI.buttons.get_input_button() == None:
@@ -95,6 +101,7 @@ while 1:
 							print(exception)
 				else:
 					UI.buttons.get_input_button().run(event)
+					
 					if not UI.buttons.is_typing():
 						UI.buttons.set_input_button(None)
 			if event.type == pg.QUIT:

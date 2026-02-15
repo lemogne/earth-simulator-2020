@@ -54,25 +54,34 @@ def toggle_menu(event):
 
 class Button_Box:
 	type = np.array([
-	    [
-	        ((0, 1), (1, 1), (1, 0.875), (0, 0.875)),  #Long Button
-	        ((0, 0.75), (1, 0.75), (1, 0.625), (0, 0.625))
-	    ],
-	    [
-	        ((0, 0.625), (1, 0.625), (1, 0.5), (0, 0.5)),  #Long Textbox
-	        ((0, 0.375), (1, 0.375), (1, 0.25), (0, 0.25))
-	    ],
-	    [
-	        ((0, 0.875), (0.5, 0.875), (0.5, 0.75), (0, 0.75)),  #Short Button
-	        ((0.5, 0.875), (1, 0.875), (1, 0.75), (0.5, 0.75))
-	    ],
-	    [
-	        ((0, 0.5), (0.5, 0.5), (0.5, 0.375), (0, 0.375)),  #Short Textbox
-	        ((0.5, 0.5), (1, 0.5), (1, 0.375), (0.5, 0.375))
-	    ]
+		[ # Long Button
+			((0, 1), (1, 1), (1, 0.875), (0, 0.875)),
+			((0, 0.75), (1, 0.75), (1, 0.625), (0, 0.625))
+		],
+		[ # Long Textbox
+			((0, 0.625), (1, 0.625), (1, 0.5), (0, 0.5)),
+			((0, 0.375), (1, 0.375), (1, 0.25), (0, 0.25))
+		],
+		[ # Short Button
+			((0, 0.875), (0.5, 0.875), (0.5, 0.75), (0, 0.75)),
+			((0.5, 0.875), (1, 0.875), (1, 0.75), (0.5, 0.75))
+		],
+		[ # Short Textbox
+			((0, 0.5), (0.5, 0.5), (0.5, 0.375), (0, 0.375)),
+			((0.5, 0.5), (1, 0.5), (1, 0.375), (0.5, 0.375))
+		],
+		[ # Tiny Button
+			((0, 0.25), (0.25, 0.25), (0.25, 0.125), (0, 0.125)),
+			((0.25, 0.25), (0.5, 0.25), (0.5, 0.125), (0.25, 0.125))
+		],
+		[ # Tiny Textbox
+			((0.5, 0.25), (0.75, 0.25), (0.75, 0.125), (0.5, 0.125)),
+			((0.75, 0.25), (1.0, 0.25), (1.0, 0.125), (0.75, 0.125))
+		],
 	])
 	vertices_long = np.array(((-1, 0.125), (1, 0.125), (1, -0.125), (-1, -0.125)))
 	vertices_short = np.array(((-0.5, 0.125), (0.5, 0.125), (0.5, -0.125), (-0.5, -0.125)))
+	vertices_tiny = np.array(((-0.5, 0.125), (0, 0.125), (0, -0.125), (-0.5, -0.125)))
 
 
 class Interface:
@@ -285,17 +294,21 @@ class UI:
 
 class Button:
 
-	def __init__(self, position, text, input_mode=None, short=False, function=None):
+	def __init__(self, position, text, input_mode=None, size=0, function=None):
 		if input_mode == None:
 			self.texture = None
 		else:
-			if short == None:
-				short = False
-			self.texture = Button_Box.type[2 * short + input_mode]
-		if short:
+			if size == None:
+				size = 0
+			self.texture = Button_Box.type[2 * size + input_mode]
+			
+		if size == 2:
+			self.box = Button_Box.vertices_tiny
+		elif size == 1:
 			self.box = Button_Box.vertices_short
 		else:
 			self.box = Button_Box.vertices_long
+			
 		self.input_mode = input_mode
 		# In-place operator overwrites the ButtonBox class because pointers
 		self.box = self.box + np.array(position)
@@ -389,13 +402,13 @@ class Start_Game:
 		UI.buttons = menu_buttons
 
 	buttons = Interface({
-	    "WorldName": Button((-1.5, 0.5), "World Name:", None, True),
-	    "Name": Button((0, 0.5), "", True, False, get_name),
-	    "WorldSeed": Button((-1.5, 0.2), "World Seed:", None, True),
-	    "Seed": Button((0, 0.2), "", True, False, get_seed),
-	    "CreateWorld": Button((0, -0.2), "Create World", False, False, run),
+	    "WorldName": Button((-1.5, 0.5), "World Name:", None, 1),
+	    "Name": Button((0, 0.5), "", True, 0, get_name),
+	    "WorldSeed": Button((-1.5, 0.2), "World Seed:", None, 1),
+	    "Seed": Button((0, 0.2), "", True, 0, get_seed),
+	    "CreateWorld": Button((0, -0.2), "Create World", False, 0, run),
 	    "Info": Button((0, -0.4), ""),
-	    "Back": Button((0, -0.7), "Back", False, False, back)
+	    "Back": Button((0, -0.7), "Back", False, 0, back)
 	})
 
 
@@ -827,7 +840,7 @@ class Load_World:
 				if len(Load_World.worlds) % settings.worlds_per_page != 0:
 					page_length = len(Load_World.worlds) % settings.worlds_per_page
 			for j in range(page_length):
-				page[j] = Button((0, 0.4 - j * 0.3), Load_World.worlds[settings.worlds_per_page * i + j], False, False,
+				page[j] = Button((0, 0.4 - j * 0.3), Load_World.worlds[settings.worlds_per_page * i + j], False, 0,
 				                 Load_World.gen_func(settings.worlds_per_page * i + j))
 			Load_World.pages.append(Interface(page))
 		if len(Load_World.pages) == 0:
@@ -840,7 +853,6 @@ class Load_World:
 		UI.buttons = menu_buttons
 
 	def gen_func(world):
-
 		def f(event):
 			for i in range(len(Load_World.pages)):
 				page_length = settings.worlds_per_page
@@ -876,13 +888,13 @@ class Load_World:
 		UI.buttons = Load_World.buttons
 
 	default_buttons = Interface({
-	    "Title": Button((-0.5, 0.7), "Worlds", None, True),
-	    "Page": Button((0.5, 0.7), "Page 1", None, True),
+	    "Title": Button((-0.5, 0.7), "Worlds", None, 1),
+	    "Page": Button((0.5, 0.7), "Page 1", None, 1),
 	    "Info": Button((0, 0.1 - settings.worlds_per_page * 0.3), "", None),
-	    "Load": Button((0.5, 0.4 - settings.worlds_per_page * 0.3), "Load World", False, True, run),
-	    "Back": Button((-0.5, 0.4 - settings.worlds_per_page * 0.3), "Back", False, True, back),
-	    "Prev": Button((-1.5, 0.4 - settings.worlds_per_page * 0.3), "Previous", False, True, prev_page),
-	    "Next": Button((1.5, 0.4 - settings.worlds_per_page * 0.3), "Next", False, True, next_page)
+	    "Load": Button((0.5, 0.4 - settings.worlds_per_page * 0.3), "Load World", False, 1, run),
+	    "Back": Button((-0.5, 0.4 - settings.worlds_per_page * 0.3), "Back", False, 1, back),
+	    "Prev": Button((-1.5, 0.4 - settings.worlds_per_page * 0.3), "Previous", False, 1, prev_page),
+	    "Next": Button((1.5, 0.4 - settings.worlds_per_page * 0.3), "Next", False, 1, next_page)
 	})
 	buttons = default_buttons
 	pages = []
@@ -1061,8 +1073,8 @@ class Settings:
 			if not var_name:
 				if comment:
 					current_category = comment.capitalize()
-					Settings.buttons.buttons[current_category] = Button((0, cat_y), current_category, False, False, gen_cat_func(current_category))
-					Settings.categories[current_category] = Interface({"Back": Button((0.67, -1.2), "Back", False, True, Settings.main)})
+					Settings.buttons.buttons[current_category] = Button((0, cat_y), current_category, False, 0, gen_cat_func(current_category))
+					Settings.categories[current_category] = Interface({"Back": Button((0.67, -1.2), "Back", False, 1, Settings.main)})
 					cat_y -= 0.3
 					y = -0.9
 					x = -1
@@ -1074,6 +1086,7 @@ class Settings:
 
 			button_name = var_name + "_value"
 			var_type = datatype(value)
+			button_size = 1
 
 			# Assign correct behaviour of input field given datatype
 			if var_type is bool:
@@ -1090,13 +1103,14 @@ class Settings:
 				# Special case: right value of 2-tuple
 				right_val = tuple_values.group(2)
 				right_button_func = gen_right_tuple_func(button_name, var_name, var_type, current_category == "Graphics")
-				Settings.categories[current_category].buttons[button_name + "1"] = Button((x, y), right_val, True, True, right_button_func)
+				Settings.categories[current_category].buttons[button_name + "1"] = Button((x + 0.5, y), right_val, True, 2, right_button_func)
 
 				# left value adjusted so that rest of function can carry on as normal
 				button_func = gen_left_tuple_func(button_name, var_name, var_type, current_category == "Graphics")
 				button_name += "0"
-				y += 0.25
+				#y += 0.25
 				value = tuple_values.group(1)
+				button_size = 2
 			else:
 				button_func = get_button_func(button_name, var_name, var_type, current_category == "Graphics")
 
@@ -1105,8 +1119,8 @@ class Settings:
 				value = re.sub("[\"'](.*)[\"']", r"\1", value)	
 
 			# Insert new setting into correct category
-			Settings.categories[current_category].buttons[var_name+"_label"] = Button((x - 1, y), gen_name(var_name), None, True)
-			Settings.categories[current_category].buttons[button_name] = Button((x, y), value, var_type != bool, True, button_func)
+			Settings.categories[current_category].buttons[var_name+"_label"] = Button((x - 1, y), gen_name(var_name), None, 1)
+			Settings.categories[current_category].buttons[button_name] = Button((x, y), value, var_type != bool, button_size, button_func)
 
 			# Coordinate calculations
 			y += 0.3
@@ -1115,8 +1129,8 @@ class Settings:
 				x = 1.5
 
 	buttons = Interface({
-	    "Cancel": Button((0.67, -1.2), "Cancel", False, True, cancel),
-	    "OK": Button((-0.67, -1.2), "OK", False, True, apply)
+	    "Cancel": Button((0.67, -1.2), "Cancel", False, 1, cancel),
+	    "OK": Button((-0.67, -1.2), "OK", False, 1, apply)
 	})
 
 	categories = {}
@@ -1124,18 +1138,18 @@ class Settings:
 
 paused_buttons = Interface({
 	"Info": Button((0, -1.2), ""),
-    "Main": Button((0, -0.8), "Back to Main Menu", False, False, leave_world),
-    "Save": Button((0, -0.4), "Save World", False, False, save_world),
-    "Settings": Button((0, 0), "Settings", False, False, Settings.main),
-    "Resume": Button((0, 0.4), "Resume Game", False, False, toggle_menu)
+    "Main": Button((0, -0.8), "Back to Main Menu", False, 0, leave_world),
+    "Save": Button((0, -0.4), "Save World", False, 0, save_world),
+    "Settings": Button((0, 0), "Settings", False, 0, Settings.main),
+    "Resume": Button((0, 0.4), "Resume Game", False, 0, toggle_menu)
 })
 
 menu_buttons = Interface({
 	"Info": Button((0, -1.2), ""),
-    "Quit": Button((0, -0.9), "Quit Game", False, False, quit_game),
-    "Settings": Button((0, -0.5), "Settings", False, False, Settings.main),
-    "Load": Button((0, -0.1), "Load World", False, False, Load_World.screen),
-    "New": Button((0, 0.3), "New World", False, False, Start_Game.screen)
+    "Quit": Button((0, -0.9), "Quit Game", False, 0, quit_game),
+    "Settings": Button((0, -0.5), "Settings", False, 0, Settings.main),
+    "Load": Button((0, -0.1), "Load World", False, 0, Load_World.screen),
+    "New": Button((0, 0.3), "New World", False, 0, Start_Game.screen)
 })
 
 
@@ -1540,6 +1554,7 @@ class World:
 	coord_array = []
 	coord_array3 = []
 
+
 	def init():
 		World.height = settings.world_height
 		World.chunk_size = settings.chunk_size
@@ -1563,6 +1578,7 @@ class World:
 		World.regions_to_load = []
 		World.bytes_for_block_ID = bytesneeded(len(game_blocks))
 		World.new_chunks = 0
+
 
 	def gen_biomemap(t_coords, x, z):
 		#World.biomemap[t_coords] = np.sin(1.57 * noise.noise2array(x / World.B_res[0] + 73982.98, z / World.B_res[1] + 43625.87))
@@ -1588,6 +1604,7 @@ class World:
 				World.regions[(i, j)].load_chunks(change_pos, change_rot, ForceLoad)
 				World.active_regions.append(World.regions[(i, j)])
 		World.active_regions.sort(key = lambda x: settings.chunk_distance(x.pos - player.chunkpos[[0, 2]]))
+
 
 	def load_chunk(chunkdata):
 		vert_tex_list = chunkdata[0][0]
@@ -1615,6 +1632,7 @@ class World:
 			return ((vbo, counter), (vbo_transp, counter_transp))
 		return ((vbo, counter), None)
 
+
 	def get_region(chunkpos):
 		reg_coords = (chunkpos[0] // World.region_size, chunkpos[1] // World.region_size)
 		if reg_coords in World.regions:
@@ -1624,6 +1642,7 @@ class World:
 		ch = (int(chunkpos[0] % World.region_size), int(chunkpos[1] % World.region_size))
 		return (reg, ch)
 
+
 	def get_hum_temp(latitude, y):
 		# 3 * π ≈ 9.425
 		a = 3.5
@@ -1632,6 +1651,7 @@ class World:
 		hum = (np.cos(9.425 * latitude) + 1) * ( -latitude**2 + 1) / 2
 		temp = c * (np.exp(-(a * latitude + b)**2) + np.exp(-(a * latitude - b)**2)) - (y - 40) / 200
 		return np.clip(np.column_stack((hum, temp)), 0, 1) * types[settings.gpu_data_type][4]
+
 
 	def process_chunk(chunkpos):
 		region, ch = World.get_region(chunkpos)
@@ -1722,7 +1742,7 @@ class World:
 					light_show_transp = light_neighb[transp_mask]
 					biome_show_transp = chunk_biome[transp_mask]
 
-					transp_mask2 = (neighbours[i] == 8) & (blocks == 0) 
+					transp_mask2 = (neighbours[i] == 8) & (blocks == 0)
 					
 					coords_show_transp2 = World.coord_array[transp_mask2]
 					blocks_show_transp2 = neighbours[i][transp_mask2]
@@ -1819,6 +1839,7 @@ class World:
 			return ((vert_tex_list, counter), (vert_tex_transp, counter_transp))
 		return ((vert_tex_list, counter), None)
 
+
 	def chunk_data(coords):
 		region, ch = World.get_region(coords)
 		if region and ch in region.chunks.keys():
@@ -1833,12 +1854,14 @@ class World:
 					World.blockmap[coords] = blockmap
 			return chunk
 
+
 	def get_height(coords):
 		chunk = tuple(coords // World.chunk_size)
 		local_coords = tuple(coords % World.chunk_size)
 		if not chunk in World.heightmap:
 			return (settings.heightlim[0] + settings.heightlim[1]) / 2
 		return World.heightmap[chunk][local_coords]
+
 
 	def chunk_in_view(chunk, y_lims):
 		left_v = np.array((
@@ -1882,12 +1905,14 @@ class World:
 			in_frustum &= all_inside
 		return in_frustum
 
+
 	def light_data(coords):
 		region, ch = World.get_region(coords)
 		if region and ch in region.light.keys():
 			return region.light[ch]
 		else:
 			return np.zeros((World.chunk_size, World.chunk_size))
+
 
 	def get_block(coords):
 		if coords is None:
@@ -1905,6 +1930,7 @@ class World:
 			return None
 		return World.get_hum_temp(World.biomemap[tuple(coords[[0, 2]] // World.chunk_size)][tuple(coords[[0, 2]] % World.chunk_size)], coords[1])[0] / types[settings.gpu_data_type][4]
 
+
 	def update_chunk(coords):
 		region, ch = World.get_region(coords)
 		if not region:
@@ -1916,34 +1942,47 @@ class World:
 			del region.loaded_chunks[ch], region.preloaded_chunks[ch]
 		region.preloaded_chunks[ch] = World.load_chunk(World.process_chunk(coords))
 
+
 	def set_block(coords, block):
 		if coords is None:
 			return
+		
 		chunk = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		region, ch = World.get_region(chunk)
+		
 		if not region or coords[1] > World.height:
 			print("Cannot build outside world!")
 			return
+		
 		if block >= len(game_blocks) or block < 0:
 			print("Invalid Block!")
 			return
+		
 		World.put_block(coords, block)
 		World.update_chunk(chunk)
+		
 		if math.floor(coords[0] % World.chunk_size) == 0:
 			World.update_chunk((chunk[0] - 1, chunk[1]))
 		elif math.floor(coords[0] % World.chunk_size) == World.chunk_size - 1:
 			World.update_chunk((chunk[0] + 1, chunk[1]))
+		
 		if math.floor(coords[2] % World.chunk_size) == 0:
 			World.update_chunk((chunk[0], chunk[1] - 1))
 		elif math.floor(coords[2] % World.chunk_size) == World.chunk_size - 1:
 			World.update_chunk((chunk[0], chunk[1] + 1))
 
+
 	def put_block(coords, block):
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		region, ch = World.get_region(ch)
 
-		current_light = math.floor(region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(
-		    coords[2] % World.chunk_size)])
+		current_light = math.floor(
+			region.light[ch][
+				math.floor(coords[0] % World.chunk_size)
+			][
+				math.floor(coords[2] % World.chunk_size)
+			]
+		)
 		if block in translucent and World.get_block(coords) != 0 and math.floor(coords[1]) == current_light:
 			h = math.floor(coords[1]) - 1
 			while World.get_block((coords[0], h, coords[2])) in translucent:
@@ -1953,12 +1992,22 @@ class World:
 			else:
 				region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] % World.chunk_size)] = h
 		elif block not in translucent and coords[1] > current_light:
-			region.light[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[2] %
-			                                                                     World.chunk_size)] = coords[1]
-		region.chunks[ch][math.floor(coords[0] % World.chunk_size)][math.floor(coords[1])][math.floor(
-		    coords[2] % World.chunk_size)] = block
+			region.light[ch][
+				math.floor(coords[0] % World.chunk_size)
+			][
+				math.floor(coords[2] % World.chunk_size)
+			] = coords[1]
+		
+		region.chunks[ch][
+			math.floor(coords[0] % World.chunk_size)
+		][
+			math.floor(coords[1])
+		][
+			math.floor(coords[2] % World.chunk_size)
+		] = block
 
 		World.update_chunk_min_max(coords, block)
+
 
 	def update_chunk_min_max(coords, block):
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
@@ -2018,7 +2067,6 @@ chat_string = ""
 
 
 class Display:
-
 	def init(size):
 		# Initialising screen, 3D rendering and position/rotation vectors
 		if settings.fullscreen:
@@ -2063,7 +2111,6 @@ class Display:
 
 
 class Textures:
-
 	def init():
 		global game_blocks, seethrough, biometint
 		game_blocks = json.loads(open(f"textures/{settings.texture_pack}/texturing.json").read())
@@ -2214,13 +2261,18 @@ def load_shaders():
 
 def process_chunks(skip_smoothing = False):
 	for reg in World.active_regions:
-		while (ch := reg.to_be_loaded.pop(0) if len(reg.to_be_loaded) > 0 else None):
-			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame <= 1 / settings.min_FPS:
+		#print(reg.to_be_loaded)
+		while (reg.to_be_loaded):
+			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
+				#print("idle render")
 				if UI.in_menu:
 					return
-				time.sleep(0.01)
+				time.sleep(0.05)
+			ch = reg.to_be_loaded.pop(0)
 			reg.preloaded_data[ch] = World.process_chunk(ch + reg.pos)
+			#print("render", ch + reg.pos)
 			World.new_chunks += 1
+
 
 def chunk_thread():
 	try:
@@ -2230,6 +2282,7 @@ def chunk_thread():
 	except Exception as e:
 		World.thread_exception = e
 		print("".join(traceback.format_exc()))
+
 
 def compute_lighting(blocks):
 	not_found = np.full((blocks.shape[0], blocks.shape[2]), True)
@@ -2250,7 +2303,6 @@ def get_schematic(file):
 def get_looked_at():
 	def rnd(p, dx):
 		return (dx < 0) * np.floor(p) - (dx > 0) * np.floor(-p) - p
-		
 
 	r_pos = player.pos + (0, player.height, 0)
 	o_pos = r_pos
