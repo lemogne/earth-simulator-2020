@@ -7,27 +7,27 @@ region_size = 32
 infinite = True
 
 #WORLD GENERATION
-heightlim = (20, 110)
-T_res = (16, 16)
-HL_res = (64, 64)
-G_res = (256, 256)		
-C_res = (4096, 4096)
-B_res = (2048, 2048)
+heightlim = (20, 200)
+T_res = (64, 64)
+HL_res = (256, 256)
+G_res = (1024, 1024)		
+C_res = (16384, 16384)
+B_res = (8192, 8192)
 
 tree_density_mean = 1 / 64
 tree_density_var = 1.1
 tree_res = (16, 16)
-water_level = 33
+water_level = 46
 
 #GRAPHICS
 render_distance = 10
 ticks_per_second = 15
 max_FPS = 60
-min_FPS = 30
+min_FPS = -1
 nominal_res = (1205, 720)
 fullscreen = False
 fov_Y = 60
-frame_cap = True
+frame_cap = False
 texture_pack = "default"
 shader_pack = "default"
 schematic_pack = "default"

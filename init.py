@@ -2215,7 +2215,7 @@ def load_shaders():
 def process_chunks(skip_smoothing = False):
 	for reg in World.active_regions:
 		while (ch := reg.to_be_loaded.pop(0) if len(reg.to_be_loaded) > 0 else None):
-			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
+			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame <= 1 / settings.min_FPS:
 				if UI.in_menu:
 					return
 				time.sleep(0.01)
@@ -2226,7 +2226,7 @@ def chunk_thread():
 	try:
 		while not UI.in_menu:
 			process_chunks()
-			time.sleep(1)
+			time.sleep(0.05)
 	except Exception as e:
 		World.thread_exception = e
 		print("".join(traceback.format_exc()))
