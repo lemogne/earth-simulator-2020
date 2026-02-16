@@ -1,5 +1,26 @@
 from init import *
 
+
+def mode_2D():
+	glMatrixMode(GL_PROJECTION)
+	glPushMatrix()
+	glLoadIdentity()
+	glMatrixMode(GL_MODELVIEW)
+	glPushMatrix()
+	glLoadIdentity()
+	glDisable(GL_DEPTH_TEST)
+	glDisable(GL_CULL_FACE)
+
+
+def mode_3D():
+	glPopMatrix()
+	glMatrixMode(GL_PROJECTION)
+	glPopMatrix()
+	glMatrixMode(GL_MODELVIEW)
+	glEnable(GL_DEPTH_TEST)
+	glEnable(GL_CULL_FACE)
+
+
 def highlight_block(position):
 	model = models[block_models[World.get_block(position)]]
 	glBindTexture(GL_TEXTURE_2D, 0)
@@ -10,6 +31,7 @@ def highlight_block(position):
 			glVertex3fv((np.array((tuple(j * 1.0078125)) + position)))
 	glEnd()
 	glColor3f(1, 1, 1)
+
 
 def render_chunk(chunkData):
 	s = types[settings.gpu_data_type][3]
@@ -22,6 +44,7 @@ def render_chunk(chunkData):
 	glNormalPointer(types[settings.gpu_data_type][1], 10 * s, (c_void_p)(7 * s))
 	glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
 
+
 def render_sky(time_start):
 	glDisable(GL_DEPTH_TEST)
 	World.game_time = settings.starting_time + ((time.time() - time_start) / settings.day_length) * 1024
@@ -32,6 +55,7 @@ def render_sky(time_start):
 	glNormalPointer(GL_DOUBLE, 0, Sky.normals)
 	glDrawArrays(GL_TRIANGLES, 0, int(len(Sky.vert_list)))
 	glEnable(GL_DEPTH_TEST)
+
 
 def render(chat_string):
 	# render blocks
@@ -119,7 +143,7 @@ def render(chat_string):
 
 		# Write chat
 		glBindTexture(GL_TEXTURE_2D, Textures.text[0])
-		UI.write(chat_string, (-0.9475, 0.875), 0.03125)
+		menu.UI.write(chat_string, (-0.9475, 0.875), 0.03125)
 
 		# Draw crosshair
 		if settings.show_crosshair:
@@ -132,8 +156,8 @@ def render(chat_string):
 
 	# Draw pause menu
 	glColor3f(1.0, 1.0, 1.0)
-	if UI.paused:
-		UI.render_buttons()
+	if menu.UI.paused:
+		menu.UI.render_buttons()
 		glColor3fv(settings.pause_menu_color)
 
 	glDisable(GL_BLEND)

@@ -1,17 +1,21 @@
 from init import *
+import menu
+
 
 def f(t):
 	return 6 * t**5 - 15 * t**4 + 10 * t**3
 
+
 def get_tree_schem(biome):
-	if biome[1] < 0.3:
+	if biome[1] < World.taiga_temp:
 		return "spruce"
-	elif biome[1] < 0.67:
+	elif biome[1] < World.tropical_temp:
 		return "tree"
-	elif biome[0] < 0.33:
+	elif biome[0] < World.desert_hum:
 		return "desert"
 	else:
 		return "jungle"
+
 
 def gen_trees(coords):
 	total_trees = []
@@ -89,6 +93,7 @@ def gen_chunk(coords):
 	biomemap = World.biomemap[coords]
 	hummap = World.get_hum_temp(biomemap, heightmap).reshape((World.chunk_size, 2, World.chunk_size)) / types[settings.gpu_data_type][4]
 	region, ch = World.get_region(coords)
+
 	if not region or region.gen_chunks[ch]:
 		return
 
@@ -121,14 +126,15 @@ def gen_chunk(coords):
 		block_map = World.blockmap.pop(coords)
 	else:
 		block_map = heights <= heightmap
+	
 	water_map = (heights > heightmap) & (heights <= World.water_level)
 	surface_map = heights == heightmap_int
 	above_surface_map = (heights == heightmap_int + 1) & (heights > World.water_level)
 	grass_map = surface_map & (heights > World.water_level + 1) & terrainmap
-	desert_map = (hummap[:, 0, :] < 0.33) & (hummap[:, 1, :] > 0.67)
+	desert_map = (hummap[:, 0, :] < World.desert_hum) & (hummap[:, 1, :] > World.tropical_temp)
 	terrain_depth = 6 * hummap[:, 1, :]
-	cold_map = (hummap[:, 1, :] < 0.2)
-	very_cold_map = (hummap[:, 1, :] < 0.1)
+	cold_map = (hummap[:, 1, :] < World.snow_temp)
+	very_cold_map = (hummap[:, 1, :] < World.deep_snow_temp)
 	snow_map = above_surface_map & cold_map
 	deep_snow_map = surface_map & (heights > World.water_level + 1) & very_cold_map
 	grass_map &= ~desert_map & ~deep_snow_map
@@ -245,13 +251,14 @@ def gen_chunks():
 	while (World.chunks_to_generate or World.regions_to_load):
 		while settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
 			#print("idle gen")
-			if UI.in_menu:
+			if menu.UI.in_menu:
 				return
+			
 			time.sleep(0.05)
 		
 		if World.regions_to_load:
 			reg = World.regions_to_load.pop(0)
-			Load_World.load_region(reg)
+			menu.Load_World.load_region(reg)
 			#print("load", reg)
 		
 		if World.chunks_to_generate:
@@ -262,7 +269,7 @@ def gen_chunks():
 
 def gen_chunk_thread():
 	try:
-		while not UI.in_menu:
+		while not menu.UI.in_menu:
 			gen_chunks()
 			time.sleep(0.05)
 	except Exception as e:

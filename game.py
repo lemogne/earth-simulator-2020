@@ -1,9 +1,13 @@
 from render_blocks import *
 from threading import Thread
-import menu, terragen
+import terragen
+
+
+menu.UI.init_font()
+menu.Settings.generate_ui()
 
 while 1:
-	UI.in_menu = True
+	menu.UI.in_menu = True
 	menu.run()
 	if World.new:
 		terragen.gen_terrain()
@@ -29,7 +33,7 @@ while 1:
 	Time.frames = 0
 	Time.prev_frames = 0
 
-	while not UI.in_menu:
+	while not menu.UI.in_menu:
 		mouse_pos = pg.mouse.get_pos()
 		# Measure time passed since last frame
 		now = time.time()
@@ -37,7 +41,7 @@ while 1:
 		if not settings.frame_cap or settings.max_FPS * (now - Time.last_frame) >= 1:
 			temp_pos = player.pos + (0,0,0)
 			
-			if not UI.paused:
+			if not menu.UI.paused:
 				delta_t = now - Time.last_tick
 				
 				if delta_t < 0:
@@ -48,7 +52,10 @@ while 1:
 				collision_check(temp_pos, ds, delta_t)
 										
 			glClear(GL_DEPTH_BUFFER_BIT)
-			player.rotate(mouse_pos)
+			
+			if not (menu.UI.paused or menu.UI.buttons.is_typing()):
+				player.rotate(mouse_pos)
+			
 			glPushMatrix()
 			glRotatef(player.rot[1], 0, 1, 0)
 			glRotatef(player.rot[0], -player.norm[2], 0, player.norm[0])
@@ -61,22 +68,25 @@ while 1:
 			Time.frames += 1
 
 		while Time.last_tick < now:
-			player.do_tick(1 / settings.ticks_per_second)
+			if not (menu.UI.paused or menu.UI.buttons.is_typing()):
+				player.do_tick(1 / settings.ticks_per_second)
 			Time.last_tick += 1 / settings.ticks_per_second
 			
-			if UI.show_game_info:
+			if menu.UI.show_game_info:
 				looked_at_coords = get_looked_at()[0]
 				
 				if looked_at_coords is not None:
 					lookedAt_str = str(looked_at_coords // 1)[1:-1]
 				else:
 					lookedAt_str = "None"
+				biome_info = World.get_biome(player.pos.astype(np.int64))
 				chat_string = f"Position:\t{str(np.round(player.pos, 4))[1:-1]}\n"\
 					f"Rotation:\t{str(np.round(player.rot, 4))[1:-1]}\n"\
 					f"FPS:\t\t{Time.prev_frames}\n"\
 					f"Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})\n"\
 					f"World Seed:\t{World.seed}\n"\
-					f"Biome:\t{World.get_biome(player.pos)}\n"\
+					f"Biome:\t{World.get_biome_ident(biome_info)}"\
+					f"({round(World.get_temp_celsius(biome_info[1]), 1)}°C; {round(biome_info[0] * 100, 1)}%)\n"\
 					f"Game Time:\t{round(World.game_time)}"
 
 		# Resets frame count
@@ -85,14 +95,14 @@ while 1:
 			Time.frames = 0
 			Time.last_second = int(now)
 
-		if UI.paused:
-			UI.check_hover(mouse_pos)
+		if menu.UI.paused:
+			menu.UI.check_hover(mouse_pos)
 		
 		for event in pg.event.get():
-			if UI.buttons.is_typing():
-				if UI.buttons.get_input_button() == None:
-					chat_string = UI.input_text(chat_string, event, start=2)
-					if not UI.buttons.is_typing():
+			if menu.UI.buttons.is_typing():
+				if menu.UI.buttons.get_input_button() == None:
+					chat_string = menu.UI.input_text(chat_string, event, start=2)
+					if not menu.UI.buttons.is_typing():
 						try:
 							exec(chat_string[2:])
 						except Exception as e:
@@ -100,21 +110,21 @@ while 1:
 							chat_string += "\n" + exception
 							print(exception)
 				else:
-					UI.buttons.get_input_button().run(event)
+					menu.UI.buttons.get_input_button().run(event)
 					
-					if not UI.buttons.is_typing():
-						UI.buttons.set_input_button(None)
+					if not menu.UI.buttons.is_typing():
+						menu.UI.buttons.set_input_button(None)
 			if event.type == pg.QUIT:
 				pg.quit()
 				quit()
 			elif event.type == pg.MOUSEBUTTONDOWN:
-				if UI.paused:
-					if UI.buttons.get_selected():
+				if menu.UI.paused:
+					if menu.UI.buttons.get_selected():
 						if event.button == 1:
-							UI.buttons.get_selected().run(event)
+							menu.UI.buttons.get_selected().run(event)
 					else:
-						UI.buttons.set_typing(False)
-						UI.buttons.set_input_button(None)
+						menu.UI.buttons.set_typing(False)
+						menu.UI.buttons.set_input_button(None)
 				else:
 					#Place/Destroy blocks
 					if event.button == 1:
@@ -138,24 +148,25 @@ while 1:
 						if looked_at is not None and player.not_in_hitbox(looked_at):
 							World.set_block(looked_at, settings.current_block)
 			elif event.type == pg.VIDEORESIZE and settings.resizeable:
+				player.rot = np.array((0.0, 0.0, 0.0))
 				Display.init((event.w, event.h))
 				Textures.update_pixel_size()
-			elif event.type == pg.KEYDOWN and not UI.buttons.is_typing():
+			elif event.type == pg.KEYDOWN and not menu.UI.buttons.is_typing():
 				if event.key == pg.K_F2:
 					screenshot()
 				elif event.key == pg.K_F1:
 					settings.shown ^= True
 				elif event.key == pg.K_ESCAPE:
-					toggle_menu(event)
+					menu.toggle_menu(event)
 				elif event.key == pg.K_m:
-					if UI.show_game_info:
+					if menu.UI.show_game_info:
 						chat_string = ""
-					UI.show_game_info ^= True
+					menu.UI.show_game_info ^= True
 				elif event.key == pg.K_f:
 					player.flying ^= True
 				elif event.key == pg.K_r:
-					UI.buttons.set_typing(True)
-					UI.show_game_info = False
+					menu.UI.buttons.set_typing(True)
+					menu.UI.show_game_info = False
 					chat_string = "> "
 				elif event.key == pg.K_c:
 					chat_string = ""
@@ -165,7 +176,9 @@ while 1:
 				elif event.key == pg.K_DOWN:
 					settings.current_block -= 1
 					settings.current_block %= len(game_blocks)
-	UI.in_menu = True
+	
+	menu.UI.in_menu = True
 	chunk_loop.join()
+	
 	if world_infinite:
 		gen_chunk_loop.join()
