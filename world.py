@@ -29,7 +29,7 @@ def collision_check(pos, ds, dt):
 			offset = settings.player_width
 			
 		offset += settings.hitbox_epsilon
-		velocity_offset = min(ds[i] * dt, 0.9)
+		velocity_offset = max(min(ds[i] * dt, 0.9), -0.9)
 		
 		if ds[i] < 0:
 			pos[i] = math.floor(pos[i] - velocity_offset + offset) + hitbox[0, i] - offset
