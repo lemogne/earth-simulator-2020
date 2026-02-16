@@ -59,7 +59,7 @@ while 1:
 			glPushMatrix()
 			glRotatef(player.rot[1], 0, 1, 0)
 			glRotatef(player.rot[0], -player.norm[2], 0, player.norm[0])
-			render_sky(Time.start)
+			render_sky()
 			glTranslatef(-temp_pos[0], -temp_pos[1] - player.height, -temp_pos[2])
 			render(chat_string)
 			glPopMatrix()
@@ -80,14 +80,16 @@ while 1:
 				else:
 					lookedAt_str = "None"
 				biome_info = World.get_biome(player.pos.astype(np.int64))
+				time_info = World.get_24h_time()
 				chat_string = f"Position:\t{str(np.round(player.pos, 4))[1:-1]}\n"\
 					f"Rotation:\t{str(np.round(player.rot, 4))[1:-1]}\n"\
 					f"FPS:\t\t{Time.prev_frames}\n"\
 					f"Looking at:\t{lookedAt_str} (ID: {World.get_block(looked_at_coords)})\n"\
 					f"World Seed:\t{World.seed}\n"\
-					f"Biome:\t{World.get_biome_ident(biome_info)}"\
-					f"({round(World.get_temp_celsius(biome_info[1]), 1)}°C; {round(biome_info[0] * 100, 1)}%)\n"\
-					f"Game Time:\t{round(World.game_time)}"
+					f"Biome:\t{World.get_biome_ident(biome_info)} "\
+					f"(Temp. {round(World.get_temp_celsius(biome_info[1]), 1)}°C; Hum. {round(biome_info[0] * 100, 1)}%)/"\
+					f"{np.round(biome_info, 4)}\n"\
+					f"Game Time:\t Day {time_info[0]}, {time_info[1]:02}:{time_info[2]:02} ({round(World.game_time)})"
 
 		# Resets frame count
 		if int(now) != Time.last_second:

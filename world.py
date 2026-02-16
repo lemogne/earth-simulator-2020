@@ -29,11 +29,12 @@ def collision_check(pos, ds, dt):
 			offset = settings.player_width
 			
 		offset += settings.hitbox_epsilon
+		velocity_offset = min(ds[i] * dt, 0.9)
 		
 		if ds[i] < 0:
-			pos[i] = math.floor(pos[i] - ds[i] * dt + offset) + hitbox[0, i] - offset
+			pos[i] = math.floor(pos[i] - velocity_offset + offset) + hitbox[0, i] - offset
 		elif ds[i] > 0:
-			pos[i] = math.floor(pos[i] - ds[i] * dt - offset) + hitbox[1, i] + offset
+			pos[i] = math.floor(pos[i] - velocity_offset - offset) + hitbox[1, i] + offset
 			
 		ds[i] = 0
 
@@ -879,6 +880,18 @@ class World:
 	def get_temp_fahrenheit(temp):
 		tropical_temp_celsius = 95 - 32
 		return 32 + tropical_temp_celsius * (temp - World.snow_temp) / (World.tropical_temp - World.snow_temp)
+	
+	
+	def update_time():
+		World.game_time = settings.starting_time + ((time.time() - init.Time.start) / settings.day_length) * 1024
+	
+	
+	def get_24h_time():
+		hrs = (World.game_time / 1024) * 24 + 12
+		day = int(hrs // 24)
+		hr = int(hrs % 24)
+		mn = int((hrs % 1) * 60)
+		return day, hr, mn
 
 
 def compute_lighting(blocks):

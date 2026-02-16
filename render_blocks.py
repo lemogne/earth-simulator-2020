@@ -45,9 +45,9 @@ def render_chunk(chunkData):
 	glDrawArrays(GL_TRIANGLES, 0, chunkData[1])
 
 
-def render_sky(time_start):
+def render_sky():
 	glDisable(GL_DEPTH_TEST)
-	World.game_time = settings.starting_time + ((time.time() - time_start) / settings.day_length) * 1024
+	World.update_time()
 	glBindBuffer(GL_ARRAY_BUFFER, 0)
 	glBindTexture(GL_TEXTURE_2D, Textures.sky[0])
 	glVertexPointer(3, GL_DOUBLE, 0, Sky.vert_list)
