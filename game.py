@@ -33,29 +33,31 @@ while 1:
 	Time.frames = 0
 	Time.prev_frames = 0
 
+	menu.UI.clear_info()
+
 	while not menu.UI.in_menu:
 		mouse_pos = pg.mouse.get_pos()
 		# Measure time passed since last frame
 		now = time.time()
 
 		if not settings.frame_cap or settings.max_FPS * (now - Time.last_frame) >= 1:
-			temp_pos = player.pos + (0,0,0)
-			
+			temp_pos = player.pos + (0, 0, 0)
+
 			if not menu.UI.paused:
 				delta_t = now - Time.last_tick
-				
+
 				if delta_t < 0:
 					ds = settings.ticks_per_second * (player.old_pos - player.pos)
 				else:
-					ds = player.mv + (0,0,0)
+					ds = player.mv + (0, 0, 0)
 
 				collision_check(temp_pos, ds, delta_t)
-										
+
 			glClear(GL_DEPTH_BUFFER_BIT)
-			
+
 			if not (menu.UI.paused or menu.UI.buttons.is_typing()):
 				player.rotate(mouse_pos)
-			
+
 			glPushMatrix()
 			glRotatef(player.rot[1], 0, 1, 0)
 			glRotatef(player.rot[0], -player.norm[2], 0, player.norm[0])
@@ -71,16 +73,18 @@ while 1:
 			if not (menu.UI.paused or menu.UI.buttons.is_typing()):
 				player.do_tick(1 / settings.ticks_per_second)
 			Time.last_tick += 1 / settings.ticks_per_second
-			
+
 			if menu.UI.show_game_info:
 				looked_at_coords = get_looked_at()[0]
-				
+
 				if looked_at_coords is not None:
 					lookedAt_str = str(looked_at_coords // 1)[1:-1]
 				else:
 					lookedAt_str = "None"
+
 				biome_info = World.get_biome(player.pos.astype(np.int64))
 				time_info = World.get_24h_time()
+
 				chat_string = f"Position:\t{str(np.round(player.pos, 4))[1:-1]}\n"\
 					f"Rotation:\t{str(np.round(player.rot, 4))[1:-1]}\n"\
 					f"FPS:\t\t{Time.prev_frames}\n"\
@@ -89,6 +93,7 @@ while 1:
 					f"Biome:\t{World.get_biome_ident(biome_info)} "\
 					f"(Temp. {round(World.get_temp_celsius(biome_info[1]), 1)}°C; Hum. {round(biome_info[0] * 100, 1)}%)/"\
 					f"{np.round(biome_info, 4)}\n"\
+					f"Latitude: {World.get_latitude_str(player.pos.astype(np.int64))}\n"\
 					f"Game Time:\t Day {time_info[0]}, {time_info[1]:02}:{time_info[2]:02} ({round(World.game_time)})"
 
 		# Resets frame count
@@ -99,7 +104,7 @@ while 1:
 
 		if menu.UI.paused:
 			menu.UI.check_hover(mouse_pos)
-		
+
 		for event in pg.event.get():
 			if menu.UI.buttons.is_typing():
 				if menu.UI.buttons.get_input_button() == None:
@@ -113,7 +118,7 @@ while 1:
 							print(exception)
 				else:
 					menu.UI.buttons.get_input_button().run(event)
-					
+
 					if not menu.UI.buttons.is_typing():
 						menu.UI.buttons.set_input_button(None)
 			if event.type == pg.QUIT:
@@ -178,9 +183,9 @@ while 1:
 				elif event.key == pg.K_DOWN:
 					settings.current_block -= 1
 					settings.current_block %= len(game_blocks)
-	
+
 	menu.UI.in_menu = True
 	chunk_loop.join()
-	
+
 	if world_infinite:
 		gen_chunk_loop.join()

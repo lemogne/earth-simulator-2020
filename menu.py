@@ -119,6 +119,7 @@ class Interface:
 
 class UI:
 	buttons = Interface({})
+	info_text = None
 	char_sizes = [None, None]
 	in_menu = True
 	paused = False
@@ -130,7 +131,7 @@ class UI:
 			char_size_dict = json.loads(raw_json)
 		else:
 			char_size_dict = {"\n" : [0, -1]}
-		
+
 		default_size = char_size_dict["default"] if "default" in char_size_dict else [1, 4]
 		UI.char_sizes[0] = np.full(Textures.texttable_height * 16, default_size[0] / 8, dtype=np.float64)
 		UI.char_sizes[1] = np.full(Textures.texttable_height * 16, (default_size[1] + 2) / 8, dtype=np.float64)
@@ -198,6 +199,7 @@ class UI:
 		glDrawArrays(GL_QUADS, 0, int(len(tex) / 2))
 		glColor3fv((1, 1, 1))
 
+
 	def input_text(variable, event, start=0, stop=None):
 		UI.buttons.set_typing(True)
 		if event.type == pg.KEYDOWN:
@@ -218,6 +220,7 @@ class UI:
 				variable = variable + event.unicode
 		return variable
 
+
 	def check_hover(m_pos):
 		m_posGL = (( m_pos[0] - Display.centre[0]) / Display.centre[0],
 		           (-m_pos[1] + Display.centre[1]) / Display.centre[1])
@@ -234,23 +237,28 @@ class UI:
 		else:
 			UI.buttons.select(None)
 
+
 	def render_buttons():
 		glBindTexture(GL_TEXTURE_2D, Textures.ui[0])
 		glBegin(GL_QUADS)
+
 		for button in UI.buttons:
 			if UI.buttons[button].has_texture():
 				texture = UI.buttons[button].get_texture()
 				box = UI.buttons[button].get_box()
+
 				for i in range(4):
 					glTexCoord2fv(texture[int(UI.buttons.is_selected(button))][i])
 					glVertex2f((box[i] * settings.button_scale)[0] * (Display.centre[1] / Display.centre[0]),
 					           (box[i] * settings.button_scale)[1])
-		glEnd()
 
+		glEnd()
 		glBindTexture(GL_TEXTURE_2D, Textures.text[0])
+
 		for button_ in UI.buttons:
 			button = UI.buttons[button_]
 			box = button.get_box()
+
 			if button.has_texture() and button.is_text_box():
 				UI.write(button.get_text() + ("_" if UI.buttons.get_input_button() == button else ""),
 				         ((box[0] * settings.button_scale + 0.1)[0] * (Display.centre[1] / Display.centre[0]),
@@ -267,8 +275,17 @@ class UI:
 		UI.buttons[name].set_text(UI.input_text(UI.buttons[name].get_text(), event))
 
 
-class Button:
+	def print_info(text):
+		UI.info_text.add_text(text)
+		print(text)
 
+
+	def clear_info():
+		UI.info_text.set_text('')
+
+
+
+class Button:
 	def __init__(self, position, text, input_mode=None, size=0, function=None):
 		if input_mode == None:
 			self.texture = None
@@ -276,14 +293,14 @@ class Button:
 			if size == None:
 				size = 0
 			self.texture = Button_Box.type[2 * size + input_mode]
-			
+
 		if size == 2:
 			self.box = Button_Box.vertices_tiny
 		elif size == 1:
 			self.box = Button_Box.vertices_short
 		else:
 			self.box = Button_Box.vertices_long
-			
+
 		self.input_mode = input_mode
 		# In-place operator overwrites the ButtonBox class because pointers
 		self.box = self.box + np.array(position)
@@ -316,11 +333,17 @@ class Button:
 	def set_text(self, text):
 		self.text = text
 
+	def add_text(self, text):
+		self.text += '\n' + text
+
 	def is_text_box(self):
 		return self.input_mode
 
 	def type_in(self, event):
 		self.text = UI.input_text(self.text, event)
+
+
+UI.info_text = Button((-0.8, -1.2), "")
 
 
 def leave_world(event):
@@ -338,6 +361,7 @@ def leave_world(event):
 class Start_Game:
 
 	def run(event):
+		UI.clear_info()
 		World.new = True
 		# Determining world seed:
 		# if field is empty, generate random seed; else, try to interpret seed as number. If not possible, display error.
@@ -347,7 +371,7 @@ class Start_Game:
 			try:
 				World.seed = int(UI.buttons["Seed"].get_text())
 			except ValueError:
-				UI.buttons["Info"].set_text("World seed must be an integer!")
+				UI.print_info("World seed must be an integer!")
 				return
 
 		worldname = UI.buttons["Name"].get_text()
@@ -355,7 +379,7 @@ class Start_Game:
 			worldname = "world_" + time.strftime("%Y-%m-%d_%H%M%S")
 		filepath = f"worlds/{worldname}.esw"
 		if os.path.exists(filepath):
-			UI.buttons["Info"].set_text(f"World '{worldname}' already exists!")
+			UI.print_info(f"World '{worldname}' already exists!")
 			return
 		World.file = open(filepath, "w+b")  # Create/overwrite world file as given by user input
 
@@ -382,7 +406,7 @@ class Start_Game:
 	    "WorldSeed": Button((-1.5, 0.2), "World Seed:", None, 1),
 	    "Seed": Button((0, 0.2), "", True, 0, get_seed),
 	    "CreateWorld": Button((0, -0.2), "Create World", False, 0, run),
-	    "Info": Button((0, -0.4), ""),
+	    "Info": UI.info_text,
 	    "Back": Button((0, -0.7), "Back", False, 0, back)
 	})
 
@@ -472,12 +496,11 @@ def save_world(event):
 					write_bytes(counter, BLpos)
 					write_bytes(block, BLblocks)
 			i = savefile.tell()
-				
 
-		UI.buttons["Info"].set_text("World saved successfully!")
+
+		UI.print_info("World saved successfully!")
 	except Exception as e:
-		UI.buttons["Info"].set_text(f"Failed to save world: {repr(e)}")
-	print(UI.buttons["Info"].get_text())
+		UI.print_info(f"Failed to save world: {repr(e)}")
 
 
 class Load_World:
@@ -489,33 +512,32 @@ class Load_World:
 		World.regions = {}
 		World.active_regions = {}
 		World.regions_to_load = []
-		UI.buttons["Info"].set_text("Loading...")
 		World.new = False
+
+		UI.clear_info()
 
 		# Check if a world has been selected
 		if Load_World.selected_world:
 			name = Load_World.selected_world
 		else:
-			UI.buttons["Info"].set_text("No world selected!")
-			print("No world selected!")
+			UI.print_info("No world selected!")
 			return
 
 		# Check if world actually exists and open it
 		try:
 			readfile = open(f"worlds/{name}.esw", "r+b")
 		except FileNotFoundError:
-			UI.buttons["Info"].set_text("No such world!")
-			print("No such world!")
+			UI.print_info("No such world!")
 			return
 
 		try:
+			UI.buttons = loading_buttons
 			# check if the file is actually a world, and if it is the right version
 			magic_const = readfile.read(4)
 			readfile.seek(1, 1)
 			version = readfile.read(4)
 			if magic_const != b"ES20":
-				UI.buttons["Info"].set_text("This file is not a world!")
-				print("This file is not a world!")
+				UI.print_info("This file is not a world!")
 				return
 			if version == b"v0.4":
 				World.bytes_for_block_ID = struct.unpack("b", readfile.read(1))[0]
@@ -527,7 +549,8 @@ class Load_World:
 				make_coord_array()
 				player.pos = np.array((struct.unpack("3f", readfile.read(12))))
 				player.rot = np.array((struct.unpack("3f", readfile.read(12))))
-				World.game_time = struct.unpack("i", readfile.read(4))[0]
+				World.starting_time = struct.unpack("i", readfile.read(4))[0]
+				World.game_time = World.starting_time
 
 				# World gen
 				World.seed = struct.unpack("i", readfile.read(4))[0]
@@ -549,11 +572,12 @@ class Load_World:
 				# Region table
 				region_table_size = struct.unpack("I", readfile.read(4))[0]
 				World.region_table = dict()
+
 				for _ in range(region_table_size):
 					region_coords = struct.unpack("2i", readfile.read(8))
 					file_data = struct.unpack("2i", readfile.read(8))
 					World.region_table[region_coords] = file_data
-				
+
 				# Load region where player is
 				player.chunkpos = player.pos // World.chunk_size
 				region = tuple((player.chunkpos // World.region_size)[[0, 2]])
@@ -566,12 +590,12 @@ class Load_World:
 				player.old_pos = None
 
 			elif version == b"v0.3":
-				UI.buttons["Info"].set_text(
-					f"This world is from version {str(version, 'ASCII')} and uses an old format. "\
-					"Please convert it by re-saving it in this version. "\
-					"Worlds in this format will not be supported much longer. "
+				UI.print_info(
+					f"This world is from version {str(version, 'ASCII')} and uses an old format.\n"\
+					"Please convert it by re-saving it in this version.\n"\
+					"Worlds in this format will not be supported much longer."
 				)
-				print(UI.buttons["Info"].get_text())
+
 				World.bytes_for_block_ID = struct.unpack("b", readfile.read(1))[0]
 				World.infinite = struct.unpack("b", readfile.read(1))[0] == 0
 				World.region_size = struct.unpack("b", readfile.read(1))[0]
@@ -581,14 +605,14 @@ class Load_World:
 				make_coord_array()
 				player.pos = np.array((struct.unpack("3f", readfile.read(12))))
 				player.rot = np.array((struct.unpack("3f", readfile.read(12))))
-				World.game_time = struct.unpack("i", readfile.read(4))[0]
+				World.starting_time = struct.unpack("i", readfile.read(4))[0]
 
 				# World gen
 				World.seed = struct.unpack("i", readfile.read(4))[0]
 				World.water_level = struct.unpack("i", readfile.read(4))[0]
 				World.heightlim = struct.unpack("2i", readfile.read(8))
 				noise.seed(int(World.seed))
- 
+
 				World.T_res = struct.unpack("2f", readfile.read(8))
 				World.HL_res = struct.unpack("2f", readfile.read(8))
 				readfile.seek(8, 1)
@@ -602,11 +626,12 @@ class Load_World:
 				# Region table
 				region_table_size = struct.unpack("I", readfile.read(4))[0]
 				World.region_table = dict()
+
 				for _ in range(region_table_size):
 					region_coords = struct.unpack("2i", readfile.read(8))
 					file_data = struct.unpack("2i", readfile.read(8))
 					World.region_table[region_coords] = file_data
-				
+
 				# Load region where player is
 				player.chunkpos = player.pos // World.chunk_size
 				region = tuple((player.chunkpos // World.region_size)[[0, 2]])
@@ -619,12 +644,12 @@ class Load_World:
 				player.old_pos = None
 
 			elif version in [b"v0.1", b"v0.2"]:
-				UI.buttons["Info"].set_text(
-					f"This world is from version {str(version, 'ASCII')} and uses an old format. "\
-					"Please convert it by re-saving it in this version. "\
-					"Worlds in this format will not be supported much longer. "
+				UI.print_info(
+					f"This world is from version {str(version, 'ASCII')} and uses an old format.\n"\
+					"Please convert it by re-saving it in this version.\n"\
+					"Worlds in this format will not be supported much longer."
 				)
-				print(UI.buttons["Info"].get_text())
+
 				readfile.seek(0, 0)
 				data = readfile.read()
 				readfile.close()
@@ -646,11 +671,12 @@ class Load_World:
 				# Chunk reading loop (reads until end of block data flag is read)
 				i = 51
 				World.region_table = dict()
+
 				while data[i:i + 6] != b"\x00\x00\x00\x00\x00\x00":
 					pg.event.get()  #prevents window from freezing
 					ChBuffer = []
 
-					chunk = (int.from_bytes(data[i:i + BLch], "little", signed=True), 
+					chunk = (int.from_bytes(data[i:i + BLch], "little", signed=True),
 					         int.from_bytes(data[i + BLch:i + 2 * BLch], "little", signed=True))  # Chunk position
 					i += BLch * 2
 
@@ -670,8 +696,7 @@ class Load_World:
 						region.chunks[ch] = np.reshape(np.array(ChBuffer),
 													(World.chunk_size, World.height, World.chunk_size)).astype(np.uint8)
 					except ValueError:
-						UI.buttons["Info"].set_text("World file corrupted!")
-						print("World file corrupted!")
+						UI.print_info("World file corrupted!")
 						return
 
 					for y in range(World.height):
@@ -696,10 +721,12 @@ class Load_World:
 					# Set chunk as generated
 					region.gen_chunks[ch] = True
 
+					# Generate biome data
+					World.gen_biomemap(chunk, np.arange(World.chunk_size), np.arange(World.chunk_size))
+
 					# Check if chunk end flag is present; if not, the file must be corrupted
 					if data[i:i + 4] != b"\x00\x00\x00\x00":
-						UI.buttons["Info"].set_text("World file corrupted!")
-						print("World file corrupted!")
+						UI.print_info("World file corrupted!")
 						return
 					i += 4
 				i += 6
@@ -709,19 +736,16 @@ class Load_World:
 				i += 4
 				settings.tree_density_mean = struct.unpack("f", data[i:i + 4])[0]
 				i += 4
-				settings.starting_time = struct.unpack("i", data[i:i + 4])[0]
+				World.starting_time = struct.unpack("i", data[i:i + 4])[0]
 			else:
-				UI.buttons["Info"].set_text(f"The version of the world, {str(version, 'ASCII')} is not compatible with this version!")
-				print(UI.buttons["Info"].get_text())
+				UI.print_info(f"The version of the world, {str(version, 'ASCII')} is not compatible with this version!")
 				return
 			UI.in_menu = False
 			UI.paused = False
 
-			UI.buttons["Info"].set_text("World loaded successfully!")
+			UI.print_info("World loaded successfully!")
 		except Exception as e:
-			UI.buttons["Info"].set_text(f"Failed to load world: {repr(e)}")
-			print("".join(traceback.format_exc()))
-		print(UI.buttons["Info"].get_text())
+			UI.print_info(f"Failed to load world: {'\n'.join(traceback.format_exc())}")
 
 
 	def load_region(reg):
@@ -740,7 +764,7 @@ class Load_World:
 
 			chunk_buffer = np.zeros(chunk_length)
 
-			ch = (int.from_bytes(readfile.read(1), "little", signed=True), 
+			ch = (int.from_bytes(readfile.read(1), "little", signed=True),
 			      int.from_bytes(readfile.read(1), "little", signed=True))  # Chunk position
 
 			# reads blocks until chunk is filled
@@ -756,7 +780,7 @@ class Load_World:
 				i += n
 
 			region.chunks[ch] = np.reshape(
-				np.array(chunk_buffer), 
+				np.array(chunk_buffer),
 				(World.height, World.chunk_size, World.chunk_size)
 			).astype(np.uint8).transpose((1, 0, 2))
 
@@ -804,7 +828,7 @@ class Load_World:
 		except FileNotFoundError:
 			os.mkdir("worlds")
 			Load_World.worlds = []
-			Load_World.default_buttons["Info"].set_text("Worlds save directory not found!")
+			UI.print_info.set_text("Worlds save directory not found!")
 
 		Load_World.pages = []
 		for i in range((len(Load_World.worlds) + 3) // settings.worlds_per_page):
@@ -864,7 +888,7 @@ class Load_World:
 	default_buttons = Interface({
 	    "Title": Button((-0.5, 0.7), "Worlds", None, 1),
 	    "Page": Button((0.5, 0.7), "Page 1", None, 1),
-	    "Info": Button((0, 0.1 - settings.worlds_per_page * 0.3), "", None),
+	    "Info": UI.info_text,
 	    "Load": Button((0.5, 0.4 - settings.worlds_per_page * 0.3), "Load World", False, 1, run),
 	    "Back": Button((-0.5, 0.4 - settings.worlds_per_page * 0.3), "Back", False, 1, back),
 	    "Prev": Button((-1.5, 0.4 - settings.worlds_per_page * 0.3), "Previous", False, 1, prev_page),
@@ -901,7 +925,7 @@ class Settings:
 		setfile = open("settings.py", "w")
 		for line in setlines:
 			line_parse = re.fullmatch(r"(?:([a-zA-Z_0-9]+) *= *(.+?))?([ \t]*#.*)?\n?", line)
-			
+
 			if line_parse and (var := line_parse.group(1)) in Settings.variables:
 				comment = line_parse.group(3)
 				comment = comment if comment else ''
@@ -955,7 +979,7 @@ class Settings:
 				for i in range(len(value)):
 					if i != int(name[-1]):
 						Settings.variables[var] += str(value[i]) + ", "
-					else: 
+					else:
 						Settings.variables[var] += UI.buttons[name].get_text() + ", "
 				Settings.variables[var] = Settings.variables[var][:-2] + ")"
 			else:
@@ -1003,7 +1027,7 @@ class Settings:
 				if is_graphics:
 					Settings.graphics_changed = True
 			return button_func
-		
+
 		def gen_left_tuple_func(button_name, var_name, var_type, is_graphics):
 			def button_func(event):
 				UI.type_button(button_name + "0", event)
@@ -1018,7 +1042,7 @@ class Settings:
 				Settings.update_variable(button_name, var_name, var_type)
 				if is_graphics:
 					Settings.graphics_changed = True
-			return button_func 
+			return button_func
 
 		# Open and read settings file
 		setfile = open("settings.py", "r")
@@ -1090,7 +1114,7 @@ class Settings:
 
 			# If string, extract value
 			if var_type is str:
-				value = re.sub("[\"'](.*)[\"']", r"\1", value)	
+				value = re.sub("[\"'](.*)[\"']", r"\1", value)
 
 			# Insert new setting into correct category
 			Settings.categories[current_category].buttons[var_name+"_label"] = Button((x - 1, y), gen_name(var_name), None, 1)
@@ -1111,7 +1135,7 @@ class Settings:
 
 
 paused_buttons = Interface({
-	"Info": Button((0, -1.2), ""),
+	"Info": UI.info_text,
     "Main": Button((0, -0.8), "Back to Main Menu", False, 0, leave_world),
     "Save": Button((0, -0.4), "Save World", False, 0, save_world),
     "Settings": Button((0, 0), "Settings", False, 0, Settings.main),
@@ -1119,11 +1143,16 @@ paused_buttons = Interface({
 })
 
 menu_buttons = Interface({
-	"Info": Button((0, -1.2), ""),
+	"Info": UI.info_text,
     "Quit": Button((0, -0.9), "Quit Game", False, 0, quit_game),
     "Settings": Button((0, -0.5), "Settings", False, 0, Settings.main),
     "Load": Button((0, -0.1), "Load World", False, 0, Load_World.screen),
     "New": Button((0, 0.3), "New World", False, 0, Start_Game.screen)
+})
+
+
+loading_buttons = Interface({
+	"Info": UI.info_text
 })
 
 
@@ -1135,6 +1164,9 @@ def run():
 	render_blocks.mode_2D()
 	now = time.time()
 	last_frame = now
+
+	#UI.clear_info()
+
 	while UI.in_menu:
 		now = time.time()
 		if not settings.frame_cap or settings.max_FPS * (now - last_frame) >= 1:
@@ -1144,7 +1176,7 @@ def run():
 				glTexCoord2fv(Textures.title_coords[i])
 				glVertex2fv(character_coords[i] * 2 - 1)
 			glEnd()
-			
+
 			if settings.logo_shown:
 				glBindTexture(GL_TEXTURE_2D, Textures.logo[0])
 				glBegin(GL_QUADS)
@@ -1193,14 +1225,18 @@ def run():
 					screenshot()
 
 	glBegin(GL_QUADS)
+
 	for i in range(4):
 		glTexCoord2fv(Textures.title_coords[i])
 		glVertex2fv(character_coords[i] * 2 - 1)
+
 	glEnd()
 
 	glBindTexture(GL_TEXTURE_2D, Textures.text[0])
 
 	UI.write("Loading...", (-0.1625, 0), 0.1, color=(1, 1, 1), shadow=True)
+	UI.buttons = loading_buttons
+	UI.render_buttons()
 
 	pg.display.flip()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -1218,6 +1254,4 @@ def justify_text(tup):
 	x, y = tup
 	y = round(y * Display.centre[1]) / Display.centre[1]
 	x = round(x * Display.centre[0]) / Display.centre[0]
-	return (x, y)
-
-
+	return (x, y)

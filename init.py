@@ -75,7 +75,7 @@ class Sky:
 
 	def texture_offset(time):
 		hardness = 2
-		return (clamp(-math.cos((time / settings.day_length) * 2 * math.pi) * hardness, -0.9, 0.9) + 1) / 2
+		return (clamp(-math.cos((time / 1024) * 2 * math.pi) * hardness, -0.9, 0.9) + 1) / 2
 
 
 class Time:
@@ -92,13 +92,13 @@ class Time:
 def process_chunks(skip_smoothing = False):
 	for reg in World.active_regions:
 		#print(reg.to_be_loaded)
-		while (reg.to_be_loaded):
+		while (ch := reg.to_be_loaded.pop(0) if reg.to_be_loaded else None): # atomic assignment to `ch`
 			while not skip_smoothing and settings.min_FPS and time.time() - Time.last_frame >= 1 / settings.min_FPS:
 				#print("idle render")
 				if menu.UI.in_menu:
 					return
 				time.sleep(0.05)
-			ch = reg.to_be_loaded.pop(0)
+			
 			reg.preloaded_data[ch] = World.process_chunk(ch + reg.pos)
 			#print("render", ch + reg.pos)
 			World.new_chunks += 1
@@ -151,7 +151,7 @@ def get_looked_at():
 
 
 def set_time(time):
-	settings.starting_time += time - World.game_time
+	World.starting_time += time - World.game_time
 
 
 def clamp(x, bottom, top):

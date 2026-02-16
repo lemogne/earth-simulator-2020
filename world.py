@@ -27,15 +27,15 @@ def collision_check(pos, ds, dt):
 			offset = 0 if ds[i] > 0 else (1 - (settings.player_height % 1))
 		else:
 			offset = settings.player_width
-			
+
 		offset += settings.hitbox_epsilon
-		velocity_offset = max(min(ds[i] * dt, 0.9), -0.9)
-		
+		velocity_offset = max(min(ds[i] * dt, 0.95), -0.95)
+
 		if ds[i] < 0:
 			pos[i] = math.floor(pos[i] - velocity_offset + offset) + hitbox[0, i] - offset
 		elif ds[i] > 0:
 			pos[i] = math.floor(pos[i] - velocity_offset - offset) + hitbox[1, i] + offset
-			
+
 		ds[i] = 0
 
 	# Check for block collisions
@@ -49,7 +49,7 @@ def collision_check(pos, ds, dt):
 		# Edge cases
 		while (hitbox := player.check_in_block(-1, dt / segments, ds, pos)) is not None and ds.any():
 			collide(abs(ds).argmax(), pos, ds, hitbox)
-		
+
 		pos -= ds * dt / segments
 
 
@@ -77,22 +77,22 @@ class Player:
 		self.old_pos = self.pos + (0, 0, 0)
 		block_under = World.get_block(self.pos - (0, 0.01, 0))
 		hitbox_block = models[block_models[block_under]].hitbox
-		
+
 		# Calculate movement vector based on key presses and environment
 		keystates = pg.key.get_pressed()
 		accel = np.array((0.0, 0.0, 0.0))
 		forward = (keystates[pg.K_w] - keystates[pg.K_s])
 		sideways = (keystates[pg.K_a] - keystates[pg.K_d])
 		downward = (keystates[pg.K_LSHIFT] - keystates[pg.K_SPACE])
-		
+
 		if forward and sideways:
 			forward *= 0.707106781188
 			sideways *= 0.707106781188
-			
+
 		accel[0] = forward * self.norm[0] + sideways * self.norm[2]
 		accel[1] = downward * settings.jump_height * ((block_under not in non_jumpable) and in_hitbox(self.pos - (0, 0.01, 0), hitbox_block) or self.flying or self.mv[1] == 0)
 		accel[2] = forward * self.norm[2] - sideways * self.norm[0]
-		
+
 		if self.flying:
 			accel *= (settings.flying_speed / settings.movement_speed)
 			self.mv[1] = 0
@@ -126,7 +126,7 @@ class Player:
 			hitbox_min = self.pos - (settings.player_width, 0, settings.player_width)
 		if hitbox_max is None:
 			hitbox_max = self.pos + (settings.player_width, settings.player_height, settings.player_width)
-		
+
 		hitbox_block = models[block_models[World.get_block(block)]].hitbox
 		block_min = np.floor(block) + hitbox_block[0]
 		block_max = block_min + hitbox_block[1]
@@ -154,7 +154,7 @@ class Player:
 					hitbox_min[i] -= mv[i] * dt
 				else:
 					hitbox_max[i] -= mv[i] * dt
-			
+
 		x_min = math.floor(hitbox_min[0])
 		x_max = math.floor(hitbox_max[0])
 		y_min = math.floor(hitbox_min[1])
@@ -178,7 +178,7 @@ class Player:
 			m_y = Display.centre[1] - mouse_pos[1]
 			rv = np.array((
 				max(
-					min(m_y * settings.mouse_sensitivity, 90 - self.rot[0]), 
+					min(m_y * settings.mouse_sensitivity, 90 - self.rot[0]),
 					-90 - self.rot[0]
 				),
 				m_x * settings.mouse_sensitivity, 0
@@ -250,7 +250,7 @@ class Region:
 				World.regions_to_load.remove(reg_pos)
 			else:
 				return
-			
+
 		if change_pos or self.chunk_coords is None or force_load or World.new_chunks >= 3:
 			self.chunk_coords = np.mgrid[0:World.region_size, 0:World.region_size].T[:, :, ::-1]
 			chunk_distance = settings.chunk_distance(
@@ -259,11 +259,14 @@ class Region:
 			)
 			self.chunk_coords = self.chunk_coords[chunk_distance <= settings.render_distance]
 			gen_status = self.gen_chunks[chunk_distance <= settings.render_distance]
+
 			if World.infinite:
 				to_generate = self.chunk_coords[~gen_status]
+
 			self.chunk_coords = self.chunk_coords[gen_status]
 			self.chunk_y_lims = self.chunk_min_max[chunk_distance <= settings.render_distance][gen_status]
 			player.old_rot = None
+
 			if World.infinite:
 				for ch in to_generate:
 					key = tuple((ch + self.pos).astype(np.int32))
@@ -276,8 +279,10 @@ class Region:
 			self.in_view = World.chunk_in_view(self.chunk_coords + self.pos, self.chunk_y_lims)
 		else:
 			return
+
 		World.new_chunks = 0
 		self.loaded_chunks = dict()
+
 		while len(self.preloaded_data) > 0:
 			ch, data = self.preloaded_data.popitem()
 			self.loaded_chunks[ch] = World.load_chunk(data)
@@ -292,7 +297,7 @@ class Region:
 			else:
 				self.loaded_chunks[ch] = self.preloaded_chunks[ch]
 		self.to_be_loaded.sort(key = lambda x: settings.chunk_distance(self.pos + x - player.chunkpos[[0, 2]]))
-		
+
 
 	# TODO: possible error: sudden jump in y level between neighbouring chunks
 	# can lead to rendering errors -> fix! (idea: involve surrounding blocks)
@@ -315,6 +320,7 @@ class World:
 	seed = 0
 	new = False
 	game_time = 0
+	starting_time = 0
 	thread_exception = None
 	height = settings.world_height
 	chunk_size = settings.chunk_size
@@ -330,7 +336,7 @@ class World:
 	game_blocks = None
 	seethrough = None
 	biome_tint = None
-	
+
 	tropical_temp = 0.67
 	desert_hum = 0.33
 	taiga_temp = 0.33
@@ -361,6 +367,7 @@ class World:
 		World.height = settings.world_height
 		World.chunk_size = settings.chunk_size
 		World.game_time = settings.starting_time
+		World.starting_time = settings.starting_time
 		World.heightlim = settings.heightlim
 		World.water_level = settings.water_level
 		World.region_size = settings.region_size
@@ -380,7 +387,7 @@ class World:
 		World.regions_to_load = []
 		World.bytes_for_block_ID = bytesneeded(len(game_blocks))
 		World.new_chunks = 0
-		
+
 		World.game_blocks = game_blocks
 		World.seethrough = seethrough
 		World.biome_tint = biome_tint
@@ -432,7 +439,7 @@ class World:
 			glBufferData(
 				GL_ARRAY_BUFFER,
 				len(vert_tex_list) * init.types[settings.gpu_data_type][3],
-				(init.types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list), 
+				(init.types[settings.gpu_data_type][2] * len(vert_tex_list))(*vert_tex_list),
 				GL_STATIC_DRAW
 			)
 			return ((vbo, counter), (vbo_transp, counter_transp))
@@ -454,8 +461,8 @@ class World:
 		a = 3.5
 		b = 0.8
 		c = 0.9
-		hum = (np.cos(9.425 * latitude) + 1) * ( -latitude**2 + 1) / 2
-		temp = c * (np.exp(-(a * latitude + b)**2) + np.exp(-(a * latitude - b)**2)) - (y - 40) / 200
+		hum = (np.cos(9.425 * latitude) + 1) * ( -latitude ** 2 + 1) / 2
+		temp = c * (np.exp(-(a * latitude + b) ** 2) + np.exp(-(a * latitude - b) ** 2)) - (y - 40) / 200
 		return np.clip(np.column_stack((hum, temp)), 0, 1) #* init.types[settings.gpu_data_type][4]
 
 
@@ -466,11 +473,11 @@ class World:
 		chunk_light = region.light[ch]
 		chunk_biome = np.vstack(
 			np.reshape(
-				np.tile(World.biomemap[tuple(chunkpos)], World.height), 
+				np.tile(World.biomemap[tuple(chunkpos)], World.height),
 				(World.chunk_size, World.height, World.chunk_size)
 			)
 		)
-		
+
 		# TODO: add check to not render chunks whose neighbours haven't been generated yet
 
 		# Shifts 3D block array by +/-1 in each direction to determine neighbour
@@ -501,7 +508,7 @@ class World:
 		counter_transp = 0
 		blocks_model = block_models[blocks]
 		seethrough_copy = np.concatenate(([False], World.seethrough[1:]), 0)
-		
+
 		for i in range(7):
 			# Basically, for each of the 6 possible faces of all cubes, we filter out all those, whose neighbour is not air;
 			# the remainder we turn into vertex and texture data
@@ -509,7 +516,7 @@ class World:
 				neighbours[i] = np.vstack(neighbours[i]).astype(int)
 				light_neighb = np.vstack(
 					np.reshape(
-						np.tile(neighbours_light[i], World.height), 
+						np.tile(neighbours_light[i], World.height),
 						(World.chunk_size, World.height, World.chunk_size)
 					)
 				)
@@ -531,7 +538,7 @@ class World:
 			for j, model in enumerate(models):
 				if model.triangles[i] is None:
 					continue
-				
+
 				model_mask = model_transp == j
 
 				solid_mask = ~World.seethrough[blocks_transp] & model_mask
@@ -542,26 +549,26 @@ class World:
 
 				if i < 6:
 					transp_mask = seethrough_copy[blocks] & (blocks != neighbours[i]) & (blocks_model == j)
-					
+
 					coords_show_transp = World.coord_array[transp_mask]
 					blocks_show_transp = blocks[transp_mask]
 					light_show_transp = light_neighb[transp_mask]
 					biome_show_transp = chunk_biome[transp_mask]
 
 					transp_mask2 = (neighbours[i] == 8) & (blocks == 0)
-					
+
 					coords_show_transp2 = World.coord_array[transp_mask2]
 					blocks_show_transp2 = neighbours[i][transp_mask2]
 					light_show_transp2 = light_neighb[transp_mask2]
 					biome_show_transp2 = chunk_biome[transp_mask2]
-					
+
 					coords_show_transp = np.concatenate((coords_show_transp, coords_show_transp2), 0)
 					blocks_show_transp = np.concatenate((blocks_show_transp, blocks_show_transp2), 0)
 					light_show_transp = np.concatenate((light_show_transp, light_show_transp2), 0)
 					biome_show_transp = np.concatenate((biome_show_transp, biome_show_transp2), 0)
 				else:
 					transp_mask = seethrough_copy[blocks] & (blocks_model == j)
-					
+
 					coords_show_transp = World.coord_array[transp_mask]
 					blocks_show_transp = blocks[transp_mask]
 					light_show_transp = light_neighb[transp_mask]
@@ -583,20 +590,20 @@ class World:
 					, n, 0)))
 					normals.append(
 						np.tile(
-							init.types[settings.gpu_data_type][4] * model.normals[i], 
+							init.types[settings.gpu_data_type][4] * model.normals[i],
 							(n * len(coords_show), 1)
 						) * np.tile(
 							np.repeat(
 								((light_show <= coords_show[:, 1]) + settings.shadow_brightness) /
 								(settings.shadow_brightness + 1), n
-							), 
+							),
 							(3, 1)
 						).T
 					)
 
 					counter += len(coords_show) * n
-					
-				
+
+
 				if len(coords_show_transp) > 0:
 					n = len(model.vertices[model.triangles[i]])
 					c_show_r = np.repeat(coords_show_transp, n, 0)
@@ -610,23 +617,23 @@ class World:
 					 n, 0)))
 					transp_normals.append(
 						np.tile(
-							init.types[settings.gpu_data_type][4] * model.normals[i], 
+							init.types[settings.gpu_data_type][4] * model.normals[i],
 							(n * len(coords_show_transp), 1)
 						) * np.tile(
 							np.repeat(
 								((light_show_transp <= coords_show_transp[:, 1]) + settings.shadow_brightness) /
 								(settings.shadow_brightness + 1), n
-							), 
+							),
 							(3, 1)
 						).T
 					)
 
 					counter_transp += len(coords_show_transp) * n
-					
+
 		vert_tex_list = np.ravel(
 			np.column_stack((
-				np.vstack(verts), 
-				np.vstack(tex_verts), 
+				np.vstack(verts),
+				np.vstack(tex_verts),
 				np.vstack(biome_verts),
 				np.vstack(normals)
 			))
@@ -635,7 +642,7 @@ class World:
 		if counter_transp != 0:
 			vert_tex_transp = np.ravel(
 				np.column_stack((
-					np.vstack(transp_verts), 
+					np.vstack(transp_verts),
 					np.vstack(transp_tex_verts),
 					np.vstack(transp_biome_verts),
 					np.vstack(transp_normals)
@@ -700,8 +707,8 @@ class World:
 				c = i & 1
 				point = (
 					np.array((
-						chunk [:, 0] + a, 
-						y_lims[:, 0] + y_lims[:, 1] * b, 
+						chunk [:, 0] + a,
+						y_lims[:, 0] + y_lims[:, 1] * b,
 						chunk [:, 1] + c
 					)).T - (
 						(player.pos + (0, player.height, 0)) / World.chunk_size
@@ -731,16 +738,19 @@ class World:
 		xyz[[0, 2]] %= World.chunk_size
 		return chunk_data[tuple(xyz)]
 
+
 	def get_biome(coords):
 		if coords is None:
 			return None
-		return World.get_hum_temp(
-			World.biomemap[
-				tuple(coords[[0, 2]] // World.chunk_size)
-			][
-				tuple(coords[[0, 2]] % World.chunk_size)
-			], coords[1]
-		)[0] / init.types[settings.gpu_data_type][4]
+		return World.get_hum_temp(World.get_latitude(coords), coords[1])[0] / init.types[settings.gpu_data_type][4]
+
+
+	def get_latitude(coords):
+		return World.biomemap[
+			tuple(coords[[0, 2]] // World.chunk_size)
+		][
+			tuple(coords[[0, 2]] % World.chunk_size)
+		]
 
 
 	def update_chunk(coords):
@@ -758,26 +768,26 @@ class World:
 	def set_block(coords, block):
 		if coords is None:
 			return
-		
+
 		chunk = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		region, ch = World.get_region(chunk)
-		
+
 		if not region or coords[1] > World.height:
 			print("Cannot build outside world!")
 			return
-		
+
 		if block >= len(World.game_blocks) or block < 0:
 			print("Invalid Block!")
 			return
-		
+
 		World.put_block(coords, block)
 		World.update_chunk(chunk)
-		
+
 		if math.floor(coords[0] % World.chunk_size) == 0:
 			World.update_chunk((chunk[0] - 1, chunk[1]))
 		elif math.floor(coords[0] % World.chunk_size) == World.chunk_size - 1:
 			World.update_chunk((chunk[0] + 1, chunk[1]))
-		
+
 		if math.floor(coords[2] % World.chunk_size) == 0:
 			World.update_chunk((chunk[0], chunk[1] - 1))
 		elif math.floor(coords[2] % World.chunk_size) == World.chunk_size - 1:
@@ -809,7 +819,7 @@ class World:
 			][
 				math.floor(coords[2] % World.chunk_size)
 			] = coords[1]
-		
+
 		region.chunks[ch][
 			math.floor(coords[0] % World.chunk_size)
 		][
@@ -824,25 +834,25 @@ class World:
 	def update_chunk_min_max(coords, block):
 		ch = (coords[0] // World.chunk_size, coords[2] // World.chunk_size)
 		region, ch = World.get_region(ch)
-		
+
 		if not region or not region.gen_chunks[ch]:
 			return
-		
+
 		# Update chunk min and max values
 		chmin, chmax = region.chunk_min_max[ch]
-		
+
 		if World.seethrough[block]:
 			chmin_new = min(chmin, (math.floor(coords[1]) - 1) / World.chunk_size)
 			chmax_new = region.thorough_chmax(ch) if math.floor(coords[1]) / World.chunk_size >= chmax else chmax
 		else:
 			chmax_new = max(chmin + chmax, math.floor(coords[1]) / World.chunk_size) - chmin
 			chmin_new = region.thorough_chmin(ch) if (math.floor(coords[1]) - 1) / World.chunk_size <= chmin else chmin
-		
+
 		# Set some heuristic variables to None to trigger a chunk reload
 		if (region.chunk_min_max[ch] != (chmin_new, chmax_new)).any():
 			player.old_chunkpos = None
 		player.old_rot = None
-		
+
 		coords = np.array(coords)
 		# Propagate value to neighbouring chunk if on edge
 		if ch[0] == 0:
@@ -880,18 +890,32 @@ class World:
 	def get_temp_fahrenheit(temp):
 		tropical_temp_celsius = 95 - 32
 		return 32 + tropical_temp_celsius * (temp - World.snow_temp) / (World.tropical_temp - World.snow_temp)
-	
-	
+
+
 	def update_time():
-		World.game_time = settings.starting_time + ((time.time() - init.Time.start) / settings.day_length) * 1024
-	
-	
+		World.game_time = World.starting_time + ((time.time() - init.Time.start) / settings.day_length) * 1024
+
+
 	def get_24h_time():
 		hrs = (World.game_time / 1024) * 24 + 12
 		day = int(hrs // 24)
 		hr = int(hrs % 24)
 		mn = int((hrs % 1) * 60)
 		return day, hr, mn
+
+
+	def get_latitude_str(coords):
+		lat = World.get_latitude(coords)
+		if lat > 0:
+			hemisphere = 'N'
+		elif lat < 0:
+			hemisphere = 'S'
+			lat *= -1
+		else:
+			hemisphere = ''
+
+		return f"{round(lat * 90, 1)}°{hemisphere}"
+
 
 
 def compute_lighting(blocks):
@@ -918,5 +942,3 @@ def make_coord_array():
 
 player = Player()
 player.init()
-
-
